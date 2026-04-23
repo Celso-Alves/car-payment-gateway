@@ -54,12 +54,13 @@ Ver SPEC-AMBI-03 para a discrepância entre esta fórmula e os valores do enunci
 
 ## Arredondamento
 
-**Regra:** `math.Round(value × 100) / 100` — arredondamento half-up para 2 casas decimais.
+**Implementação:** `github.com/shopspring/decimal` com **`.Round(2)`** (meia unidade afastada
+do zero; para montantes positivos, comportamento alinhado ao half-up clássico em BRL).
 
 Aplicado a todos os valores monetários: `UpdatedAmount`, `TotalOriginal`, `TotalUpdated`,
-`TotalWithDiscount`, `InstallmentAmt`.
+`TotalWithDiscount`, valores de parcela, etc.
 
-Ver SPEC-AMBI-06 para a justificativa.
+Ver SPEC-AMBI-06 para a justificativa e o contrato JSON (strings decimais, sem `float64`).
 
 ## Testes relacionados
 

@@ -58,3 +58,14 @@ main.go (wiring)
 | SPEC-005 | `internal/application/usecase/consult_debts.go` |
 | SPEC-006 | `internal/adapters/httpapi/handler.go` |
 | SPEC-007 | `internal/domain/service/payment.go` (função `groupByType`) |
+
+---
+
+## Leitura sugerida para revisão (humana ou por ferramenta de IA)
+
+1. **Índice e ordem de construção** — tabelas acima (o que existe e em que ordem foi pensado).
+2. **Contratos de API e HTTP** — [SPEC-006](./SPEC-006-http-api.md) + seção **API** no [README raiz](../README.md).
+3. **Onde o código diverge do enunciado original** — [SPEC-AMBI](./SPEC-AMBI-ambiguities.md) (obrigatório antes de julgar “bug” em número ou exemplo).
+4. **Mapeamento arquivo spec → pacote Go** — coluna da tabela “Mapeamento specs → código”; o diagrama em `README.md` espelha os mesmos pacotes (`httpapi`, não `http`).
+
+Comandos úteis no repositório: `make test`, `make test-race`, `make lint` (`go vet ./...`).

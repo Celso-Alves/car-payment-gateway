@@ -80,15 +80,18 @@ acumulada + 1% ao mês. O enunciado simplifica para 1%/dia sem Selic.
 ```go
 func daysOverdue(dueDate, ref time.Time) int {
     due := truncateToDate(dueDate)   // meia-noite UTC
-    ref := truncateToDate(ref)
-    diff := ref.Sub(due)
-    if diff <= 0 { return 0 }
-    return int(math.Ceil(diff.Hours() / 24))
+    reference := truncateToDate(ref)
+    diff := reference.Sub(due)
+    if diff <= 0 {
+        return 0
+    }
+    return int(diff.Hours() / 24)
 }
 ```
 
 Ambas as datas são normalizadas para meia-noite UTC antes da subtração,
-garantindo resultado independente de timezone.
+garantindo resultado independente de timezone. Com essa normalização, `diff`
+é múltiplo de 24h; o número de dias inteiros é `int(diff.Hours() / 24)`.
 
 Ver SPEC-AMBI-02 para a discrepância entre o enunciado (85 dias) e o
 resultado matematicamente correto (81 dias) para MULTA.

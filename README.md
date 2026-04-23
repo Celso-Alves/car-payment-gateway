@@ -21,6 +21,11 @@ make run          # sobe em :3000
 # Testes
 make test         # todos os testes, sem verbosidade
 make test-verbose # com saída detalhada
+make test-race    # mesma suíte com detector de corrida (-race)
+make coverage     # cobertura (coverage.out + resumo no terminal)
+
+# Qualidade
+make lint         # go vet ./...
 
 # Binário
 make build        # gera em bin/
@@ -213,7 +218,7 @@ internal/
     usecase/          ← ConsultDebts: orquestra provedores + domínio
   adapters/
     provider/         ← ProviderA (JSON), ProviderB (XML), MockFailing
-    http/             ← handler HTTP, tradução requisição/resposta
+    httpapi/          ← handler HTTP, middleware (recover), tradução requisição/resposta
 pkg/
   logger/             ← wrapper slog estruturado
 ```
@@ -304,8 +309,9 @@ tipo de débito. Decisão: oferecer 1x/6x/12x de forma consistente em todas as o
 
 ### Arredondamento (SPEC-AMBI-06)
 
-Arredondamento half-up com 2 casas via `math.Round(v*100)/100`.
-Consistente em todos os valores monetários.
+Valores monetários usam `github.com/shopspring/decimal` com **`.Round(2)`**
+(meia unidade afastada do zero; para valores positivos equivale ao half-up usual em dinheiro).
+Serialização JSON como **string** decimal, sem `float64` no fio.
 
 ### Entrada: só `placa`
 
