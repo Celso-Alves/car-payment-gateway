@@ -7,34 +7,42 @@ import (
 	"time"
 
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
+	"github.com/shopspring/decimal"
 )
 
 // providerAResponse is the JSON wire format for Provider A.
 // This mirrors the SEFAZ-SP style API response.
 type providerAResponse struct {
-	Vehicle string        `json:"vehicle"`
+	Vehicle string          `json:"vehicle"`
 	Debts   []providerADebt `json:"debts"`
 }
 
 type providerADebt struct {
-	Type    string  `json:"type"`
-	Amount  float64 `json:"amount"`
-	DueDate string  `json:"due_date"` // format: YYYY-MM-DD
+	Type    string          `json:"type"`
+	Amount  decimal.Decimal `json:"amount"`
+	DueDate string          `json:"due_date"` // format: YYYY-MM-DD
 }
 
 // ProviderA is the Adapter (SPEC-001) for Provider A's JSON format.
 // In production this would make an HTTP call to the SEFAZ-SP API;
 // here it serves a deterministic in-memory payload to isolate the
 // architecture from external dependencies.
-type ProviderA struct {
-	// payload holds the raw JSON bytes. Injected at construction so the
-	// adapter can be tested with arbitrary provider responses.
-	payload []byte
+type ProviderA struct{}
+
+// NewProviderA constructs a ProviderA adapter.
+func NewProviderA() *ProviderA {
+	return &ProviderA{}
 }
 
-// NewProviderA constructs a ProviderA with a static JSON payload that
-// mirrors the spec's Provider A example exactly.
-func NewProviderA(plate string) *ProviderA {
+func (p *ProviderA) Name() string { return "ProviderA-JSON" }
+
+// FetchDebts builds a deterministic JSON payload for the given plate and
+// normalises it into the canonical []entity.Debt model (SPEC-002).
+func (p *ProviderA) FetchDebts(ctx context.Context, plate string) ([]entity.Debt, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("%s: context cancelled: %w", p.Name(), err)
+	}
+
 	raw := fmt.Sprintf(`{
 		"vehicle": %q,
 		"debts": [
@@ -42,20 +50,9 @@ func NewProviderA(plate string) *ProviderA {
 			{"type": "MULTA", "amount": 300.50,  "due_date": "2024-02-19"}
 		]
 	}`, plate)
-	return &ProviderA{payload: []byte(raw)}
-}
-
-func (p *ProviderA) Name() string { return "ProviderA-JSON" }
-
-// FetchDebts parses the JSON payload and normalises it into the canonical
-// []entity.Debt model (SPEC-002).
-func (p *ProviderA) FetchDebts(ctx context.Context, _ string) ([]entity.Debt, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("%s: context cancelled: %w", p.Name(), err)
-	}
 
 	var resp providerAResponse
-	if err := json.Unmarshal(p.payload, &resp); err != nil {
+	if err := json.Unmarshal([]byte(raw), &resp); err != nil {
 		return nil, fmt.Errorf("%s: json unmarshal: %w", p.Name(), err)
 	}
 

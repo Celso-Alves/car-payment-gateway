@@ -5,6 +5,7 @@
 package logger
 
 import (
+	"io"
 	"log/slog"
 	"os"
 )
@@ -19,5 +20,12 @@ func New() *slog.Logger {
 	}
 	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: level,
+	}))
+}
+
+// NewDiscard returns a logger that discards all output (for tests).
+func NewDiscard() *slog.Logger {
+	return slog.New(slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
 	}))
 }

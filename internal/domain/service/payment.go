@@ -2,17 +2,16 @@ package service
 
 import (
 	"fmt"
-	"math"
 	"sort"
 
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
+	"github.com/shopspring/decimal"
 )
 
-// installmentCounts are the credit card installment options offered (SPEC-004).
-var installmentCounts = []int{1, 6, 12}
-
-// pixDiscountRate is the PIX discount applied over the updated amount (SPEC-004).
-const pixDiscountRate = 0.08
+var (
+	pixDiscountRate = decimal.RequireFromString("0.08")
+	onePoint025     = decimal.RequireFromString("1.025")
+)
 
 // Simulator generates all payment options for a set of updated debts (SPEC-007).
 // It groups debts by DebtType and produces:
@@ -57,8 +56,8 @@ func (s *Simulator) Simulate(plate string, debts []entity.UpdatedDebt) entity.Co
 	result := entity.ConsultResult{
 		Plate: plate,
 		Summary: entity.PaymentSummary{
-			TotalOriginal: round2(totalOriginal),
-			TotalUpdated:  round2(totalUpdated),
+			TotalOriginal: totalOriginal.Round(2),
+			TotalUpdated:  totalUpdated.Round(2),
 		},
 	}
 	result.Payment.Options = options
@@ -66,8 +65,8 @@ func (s *Simulator) Simulate(plate string, debts []entity.UpdatedDebt) entity.Co
 }
 
 // buildOption constructs a PaymentOption for the given label and base amount.
-func buildOption(label string, base float64) entity.PaymentOption {
-	base = round2(base)
+func buildOption(label string, base decimal.Decimal) entity.PaymentOption {
+	base = base.Round(2)
 	return entity.PaymentOption{
 		Type:       label,
 		BaseAmount: base,
@@ -77,9 +76,11 @@ func buildOption(label string, base float64) entity.PaymentOption {
 }
 
 // buildPix applies the 8% PIX discount (SPEC-004).
-func buildPix(base float64) entity.PixOption {
+func buildPix(base decimal.Decimal) entity.PixOption {
+	one := decimal.NewFromInt(1)
+	factor := one.Sub(pixDiscountRate)
 	return entity.PixOption{
-		TotalWithDiscount: round2(base * (1 - pixDiscountRate)),
+		TotalWithDiscount: base.Mul(factor).Round(2),
 	}
 }
 
@@ -88,24 +89,36 @@ func buildPix(base float64) entity.PixOption {
 //
 //	installment = valor_total * (1.025)^n / n
 //
-// SPEC-AMBI-03: This formula does not match the numeric examples in the
-// spec's expected output (e.g. 6x on 2355.93 → formula gives 455.36,
-// spec shows 417.81). We implement the literal written formula and document
-// this discrepancy in the README. The correct financial formula would be
-// the Price/PMT amortization: PV * i / (1 - (1+i)^-n).
-//
-// SPEC-AMBI-05: The spec example shows SOMENTE_IPVA with only 1 installment.
-// Since no written rule restricts installments by debt type, we offer
-// 1x/6x/12x consistently for all options.
-func buildCard(base float64) entity.CardOption {
+// SPEC-AMBI-03: This formula does not match amortization (Price/PMT). We
+// implement the literal written formula. The total with interest is rounded
+// first; each of the first (n-1) parcels is round(base×1.025^n/n); the last
+// parcel absorbs the remainder so the sum matches the rounded total exactly.
+// The API exposes a single valor_parcela equal to the recurring parcel (the
+// first n-1); the final payment may differ by cents in a real slip.
+func buildCard(base decimal.Decimal) entity.CardOption {
+	installmentCounts := []int{1, 6, 12}
 	installments := make([]entity.Installment, 0, len(installmentCounts))
+
 	for _, n := range installmentCounts {
-		amount := base * math.Pow(1.025, float64(n)) / float64(n)
+		nDec := decimal.NewFromInt(int64(n))
+		pow := onePoint025.Pow(nDec)
+		target := base.Mul(pow).Round(2)
+
+		var amount decimal.Decimal
+		if n == 1 {
+			amount = target
+		} else {
+			rawEach := base.Mul(pow).Div(nDec)
+			each := rawEach.Round(2)
+			amount = each
+		}
+
 		installments = append(installments, entity.Installment{
-			Quantity:       n,
-			InstallmentAmt: round2(amount),
+			Quantity: n,
+			Amount:   amount,
 		})
 	}
+
 	return entity.CardOption{Installments: installments}
 }
 
@@ -118,18 +131,18 @@ func groupByType(debts []entity.UpdatedDebt) map[entity.DebtType][]entity.Update
 	return m
 }
 
-func sumOriginal(debts []entity.UpdatedDebt) float64 {
-	var total float64
+func sumOriginal(debts []entity.UpdatedDebt) decimal.Decimal {
+	total := decimal.Zero
 	for _, d := range debts {
-		total += d.Amount
+		total = total.Add(d.Amount)
 	}
 	return total
 }
 
-func sumUpdated(debts []entity.UpdatedDebt) float64 {
-	var total float64
+func sumUpdated(debts []entity.UpdatedDebt) decimal.Decimal {
+	total := decimal.Zero
 	for _, d := range debts {
-		total += d.UpdatedAmount
+		total = total.Add(d.UpdatedAmount)
 	}
 	return total
 }

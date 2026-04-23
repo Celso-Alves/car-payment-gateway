@@ -1,0 +1,92 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-4789-a012-3456789abcde",
+    "name": "car-payment-gateway",
+    "description": "Chamadas da API car-payment-gateway.\n\nPré-requisito: servidor em execução (`make run`). Ajuste a variável de collection **baseUrl** se usar outra porta (ex.: `PORT` no `.env` / Makefile).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Probe de liveness — resposta JSON com `status: ok`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Debts",
+      "item": [
+        {
+          "name": "Consulta — corpo válido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"ABC1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/debts"
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta — placa ausente ou vazia (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"   \"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/debts",
+            "description": "Esperado: HTTP 400 com envelope `{ \"error\": \"...\" }`."
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta — JSON inválido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ placa: \"ABC1234\" }"
+            },
+            "url": "{{baseUrl}}/api/v1/debts",
+            "description": "Corpo intencionalmente inválido para testar `invalid JSON body`."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

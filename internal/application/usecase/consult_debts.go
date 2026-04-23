@@ -12,11 +12,16 @@ import (
 	"github.com/celsoadsjr/car-payment-gateway/internal/adapters/provider"
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/service"
+	"github.com/celsoadsjr/car-payment-gateway/pkg/logger"
 )
 
 // ErrAllProvidersFailed is returned when every provider in the list
 // fails or times out (SPEC-005).
 var ErrAllProvidersFailed = errors.New("all providers failed or are unavailable")
+
+// ErrAllDebtsUnknownType is re-exported for callers that match errors without
+// importing the domain service package.
+var ErrAllDebtsUnknownType = service.ErrAllDebtsUnknownType
 
 // ConsultDebts is the application Facade (SPEC-005) that:
 //  1. Tries each provider in order, stopping at the first success (fallback).
@@ -26,29 +31,46 @@ var ErrAllProvidersFailed = errors.New("all providers failed or are unavailable"
 // It depends on the Provider port interface, never on concrete adapters,
 // so new providers can be added by registering them in main.go.
 type ConsultDebts struct {
-	providers      []provider.Provider
-	calculator     *service.Calculator
-	simulator      *service.Simulator
-	logger         *slog.Logger
+	providers       []provider.Provider
+	calculator      *service.Calculator
+	simulator       *service.Simulator
+	logger          *slog.Logger
 	providerTimeout time.Duration
+	requestTimeout  time.Duration
 }
 
 // NewConsultDebts constructs the use case with all required dependencies.
 // providerTimeout controls how long the use case waits for each individual
 // provider before giving up and trying the next one.
+// requestTimeout is the HTTP-layer deadline; if len(providers)*providerTimeout
+// exceeds it, a warning is logged (providers may not all be tried in time).
 func NewConsultDebts(
 	providers []provider.Provider,
 	calculator *service.Calculator,
 	simulator *service.Simulator,
 	logger *slog.Logger,
 	providerTimeout time.Duration,
+	requestTimeout time.Duration,
 ) *ConsultDebts {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	maxChain := time.Duration(len(providers)) * providerTimeout
+	if requestTimeout > 0 && maxChain > requestTimeout {
+		logger.Warn("provider chain may exceed HTTP request timeout",
+			slog.Int("providers", len(providers)),
+			slog.Duration("providerTimeout", providerTimeout),
+			slog.Duration("maxChain", maxChain),
+			slog.Duration("requestTimeout", requestTimeout),
+		)
+	}
 	return &ConsultDebts{
 		providers:       providers,
 		calculator:      calculator,
 		simulator:       simulator,
 		logger:          logger,
 		providerTimeout: providerTimeout,
+		requestTimeout:  requestTimeout,
 	}
 }
 
@@ -64,7 +86,11 @@ func (uc *ConsultDebts) Execute(ctx context.Context, plate string) (entity.Consu
 		return entity.ConsultResult{}, err
 	}
 
-	updatedDebts := uc.calculator.Apply(debts)
+	updatedDebts, err := uc.calculator.Apply(debts)
+	if err != nil {
+		return entity.ConsultResult{}, err
+	}
+
 	result := uc.simulator.Simulate(plate, updatedDebts)
 	return result, nil
 }
@@ -74,6 +100,7 @@ func (uc *ConsultDebts) Execute(ctx context.Context, plate string) (entity.Consu
 // so a slow provider does not exhaust the caller's overall deadline.
 func (uc *ConsultDebts) fetchWithFallback(ctx context.Context, plate string) ([]entity.Debt, error) {
 	var lastErr error
+	masked := logger.MaskPlate(plate)
 
 	for _, p := range uc.providers {
 		pCtx, cancel := context.WithTimeout(ctx, uc.providerTimeout)
@@ -87,7 +114,7 @@ func (uc *ConsultDebts) fetchWithFallback(ctx context.Context, plate string) ([]
 			uc.logger.Info("provider succeeded",
 				slog.String("provider", p.Name()),
 				slog.Duration("latency", elapsed),
-				slog.String("plate", plate),
+				slog.String("plate", masked),
 			)
 			return debts, nil
 		}
@@ -95,7 +122,7 @@ func (uc *ConsultDebts) fetchWithFallback(ctx context.Context, plate string) ([]
 		uc.logger.Warn("provider failed, trying next",
 			slog.String("provider", p.Name()),
 			slog.Duration("latency", elapsed),
-			slog.String("plate", plate),
+			slog.String("plate", masked),
 			slog.String("error", err.Error()),
 		)
 		lastErr = fmt.Errorf("provider %s: %w", p.Name(), err)

@@ -7,76 +7,84 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	httpAdapter "github.com/celsoadsjr/car-payment-gateway/internal/adapters/http"
+	httpapi "github.com/celsoadsjr/car-payment-gateway/internal/adapters/httpapi"
 	"github.com/celsoadsjr/car-payment-gateway/internal/adapters/provider"
 	"github.com/celsoadsjr/car-payment-gateway/internal/application/usecase"
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/service"
 	"github.com/celsoadsjr/car-payment-gateway/pkg/logger"
 )
 
-// referenceDate is the fixed date specified in the test document.
-// In a production system this would be time.Now() or injected via config.
-var referenceDate = time.Date(2024, 5, 10, 0, 0, 0, 0, time.UTC)
-
 func main() {
 	log := logger.New()
 
-	addr := envOr("PORT", "8080")
-	addr = ":" + addr
+	referenceDate := time.Now().UTC()
+	if v := os.Getenv("REFERENCE_DATE"); v != "" {
+		parsed, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			log.Error("invalid REFERENCE_DATE; expected YYYY-MM-DD", slog.String("value", v), slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+		referenceDate = parsed.UTC()
+	}
 
-	// ── Provider chain (SPEC-001, SPEC-005) ────────────────────────────────
-	// Providers are tried in order. Add/remove providers here to change the
-	// fallback chain without touching any other file.
-	//
-	// Set ENABLE_MOCK_FAILING=true to prepend a failing provider and demo
-	// the fallback mechanism during the live coding presentation.
+	providerTimeout := 3 * time.Second
+	requestTimeout := 10 * time.Second
+
 	providers := buildProviders(log)
 
-	// ── Domain services ─────────────────────────────────────────────────────
-	calculator := service.NewCalculator(referenceDate)
+	calculator := service.NewCalculator(referenceDate, log)
 	simulator := service.NewSimulator()
 
-	// ── Use case ────────────────────────────────────────────────────────────
 	uc := usecase.NewConsultDebts(
 		providers,
 		calculator,
 		simulator,
 		log,
-		3*time.Second, // per-provider timeout
+		providerTimeout,
+		requestTimeout,
 	)
 
-	// ── HTTP adapter ─────────────────────────────────────────────────────────
-	handler := httpAdapter.NewHandler(uc, log)
+	handler := httpapi.NewHandler(uc, log, requestTimeout)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
 	srv := &http.Server{
-		Addr:         addr,
-		Handler:      mux,
+		Addr:         listenAddr(),
+		Handler:      httpapi.Recover(log)(mux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// ── Graceful shutdown ────────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
+	serverErr := make(chan error, 1)
 	go func() {
-		log.Info("server starting", slog.String("addr", addr))
+		log.Info("server starting", slog.String("addr", srv.Addr))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			serverErr <- err
+			return
+		}
+		serverErr <- nil
+	}()
+
+	select {
+	case err := <-serverErr:
+		if err != nil {
 			log.Error("server error", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
-	}()
+	case <-quit:
+	}
 
-	<-quit
 	log.Info("shutting down gracefully")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -98,12 +106,21 @@ func buildProviders(log *slog.Logger) []provider.Provider {
 	}
 
 	providers = append(providers,
-		provider.NewProviderA(""),
-		provider.NewProviderB(""),
+		provider.NewProviderA(),
+		provider.NewProviderB(),
 	)
 
 	log.Info("providers registered", slog.Int("count", len(providers)))
 	return providers
+}
+
+// listenAddr returns ADDR if set, otherwise ":PORT" with PORT defaulting to 3000.
+func listenAddr() string {
+	if v := os.Getenv("ADDR"); v != "" {
+		return v
+	}
+	port := envOr("PORT", "3000")
+	return net.JoinHostPort("", port)
 }
 
 func envOr(key, fallback string) string {

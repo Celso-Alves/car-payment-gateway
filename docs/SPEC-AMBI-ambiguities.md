@@ -93,18 +93,20 @@ Mas os valores no exemplo de saída não correspondem a essa fórmula.
 
 ### Análise
 
-Aplicando a fórmula do enunciado ao TOTAL do exemplo (2355.93):
+Aplicando a fórmula do enunciado ao TOTAL coerente com AMBI-02 (2343.91):
 
-| n | Fórmula literal | Exemplo do enunciado | Bate? |
-|---|-----------------|---------------------|-------|
-| 1 | 2355.93         | 2355.93             | ✓     |
-| 6 | 455.36          | 417.81              | ✗     |
-| 12 | 264.03         | 233.07              | ✗     |
+| n | Fórmula literal (sobre 2343.91) | Exemplo do enunciado (sobre 2355.93) | Bate? |
+|---|--------------------------------|--------------------------------------|-------|
+| 1 | 2402.51                        | 2355.93                              | não   |
+| 6 | 453.04                         | 417.81                               | não   |
+| 12 | 262.69                        | 233.07                               | não   |
+
+O exemplo original do PDF mistura totais; com total 2343.91 os valores seguem uma única fórmula.
 
 A fórmula PMT de amortização Price (`PV × i / (1 - (1+i)^-n)`) também foi testada:
 ```
-n=6:  2355.93 × 0.025 / (1 - 1.025^-6) = 427.70  ≠ 417.81
-n=12: 2355.93 × 0.025 / (1 - 1.025^-12) = 229.70 ≠ 233.07
+n=6:  2343.91 × 0.025 / (1 - 1.025^-6) ≈ 425.66  ≠ 417.81
+n=12: 2343.91 × 0.025 / (1 - 1.025^-12) ≈ 228.58 ≠ 233.07
 ```
 
 Nenhuma fórmula financeira padrão reproduz exatamente os valores do enunciado.
@@ -199,10 +201,11 @@ O enunciado usa valores com 2 casas decimais mas não define a regra de arredond
 
 ### Decisão
 
-Usar **half-up para 2 casas decimais**: `math.Round(v × 100) / 100`.
+Valores monetários usam `github.com/shopspring/decimal` com **`Round(2)`** (meia unidade
+afastada do zero, equivalente prático ao half-up clássico para dinheiro).
 
-É a regra mais intuitiva para valores monetários no contexto brasileiro e
-corresponde ao comportamento esperado por usuários finais.
+O tipo `decimal.Decimal` serializa em JSON como **string** (ex.: `"2343.91"`) para evitar
+perda de precisão de `float64` no fio.
 
 ---
 
@@ -215,4 +218,4 @@ corresponde ao comportamento esperado por usuários finais.
 | AMBI-03 | Fórmula literal | Parcelas diferentes do exemplo |
 | AMBI-04 | Ignora typo | 12x MULTA ≈ 60.96, não 176.07 |
 | AMBI-05 | 1x/6x/12x uniforme | IPVA tem 3 opções, não 1 |
-| AMBI-06 | Half-up 2 casas | Consistente com enunciado |
+| AMBI-06 | `decimal.Round(2)` + JSON string | Evita float; 2 casas decimais |

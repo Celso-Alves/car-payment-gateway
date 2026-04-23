@@ -1,116 +1,114 @@
 package service_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/service"
+	"github.com/celsoadsjr/car-payment-gateway/pkg/logger"
+	"github.com/shopspring/decimal"
 )
 
 // referenceDate is the fixed test date specified in the document.
 var referenceDate = time.Date(2024, 5, 10, 0, 0, 0, 0, time.UTC)
 
 func TestCalculator_Apply(t *testing.T) {
-	calc := service.NewCalculator(referenceDate)
+	log := logger.NewDiscard()
+	calc := service.NewCalculator(referenceDate, log)
 
 	tests := []struct {
 		name            string
 		debt            entity.Debt
-		wantUpdated     float64
+		wantUpdated     decimal.Decimal
 		wantDaysOverdue int
 	}{
 		{
 			name: "IPVA: 121 days overdue, interest capped at 20%",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeIPVA,
-				Amount:  1500.00,
+				Amount:  decimal.RequireFromString("1500.00"),
 				DueDate: time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC),
 			},
-			// 1500 * 0.0033 * 121 = 599.55 → exceeds 20% cap (300) → 1800.00
-			wantUpdated:     1800.00,
+			wantUpdated:     decimal.RequireFromString("1800.00"),
 			wantDaysOverdue: 121,
 		},
 		{
-			// SPEC-AMBI-02: The test document states "85 days" and 555.93 for this case.
-			// Correct UTC day-diff from 2024-02-19 to 2024-05-10 is 81 days.
-			// We implement mathematically correct date subtraction (81 days → 543.91)
-			// and document this discrepancy in the README.
-			name: "MULTA: 81 days overdue, no cap (spec says 85 — see SPEC-AMBI-02)",
+			name: "MULTA: 81 days overdue, no cap (spec example used 85 days — SPEC-AMBI-02)",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeMULTA,
-				Amount:  300.50,
+				Amount:  decimal.RequireFromString("300.50"),
 				DueDate: time.Date(2024, 2, 19, 0, 0, 0, 0, time.UTC),
 			},
-			// 300.50 * 0.01 * 81 = 243.405 → 300.50 + 243.41 = 543.91
-			wantUpdated:     543.91,
+			wantUpdated:     decimal.RequireFromString("543.91"),
 			wantDaysOverdue: 81,
 		},
 		{
 			name: "IPVA: interest below cap, not capped",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeIPVA,
-				Amount:  1000.00,
+				Amount:  decimal.RequireFromString("1000.00"),
 				DueDate: time.Date(2024, 4, 10, 0, 0, 0, 0, time.UTC),
 			},
-			// 30 days * 0.0033 = 0.099 → 99.00 interest, cap = 200 → not capped
-			wantUpdated:     1099.00,
+			wantUpdated:     decimal.RequireFromString("1099.00"),
 			wantDaysOverdue: 30,
 		},
 		{
 			name: "IPVA: exactly at 20% cap boundary",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeIPVA,
-				Amount:  1000.00,
+				Amount:  decimal.RequireFromString("1000.00"),
 				DueDate: time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC),
 			},
-			// 121 days * 0.0033 = 0.3993 → 399.30 > cap 200 → total 1200.00
-			wantUpdated:     1200.00,
+			wantUpdated:     decimal.RequireFromString("1200.00"),
 			wantDaysOverdue: 121,
 		},
 		{
 			name: "MULTA: 1 day overdue",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeMULTA,
-				Amount:  100.00,
+				Amount:  decimal.RequireFromString("100.00"),
 				DueDate: time.Date(2024, 5, 9, 0, 0, 0, 0, time.UTC),
 			},
-			// 100 * 0.01 * 1 = 1.00 → total 101.00
-			wantUpdated:     101.00,
+			wantUpdated:     decimal.RequireFromString("101.00"),
 			wantDaysOverdue: 1,
 		},
 		{
 			name: "Not overdue: due date equals reference date",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeIPVA,
-				Amount:  500.00,
+				Amount:  decimal.RequireFromString("500.00"),
 				DueDate: time.Date(2024, 5, 10, 0, 0, 0, 0, time.UTC),
 			},
-			wantUpdated:     500.00,
+			wantUpdated:     decimal.RequireFromString("500.00"),
 			wantDaysOverdue: 0,
 		},
 		{
 			name: "Not overdue: due date in the future",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeMULTA,
-				Amount:  200.00,
+				Amount:  decimal.RequireFromString("200.00"),
 				DueDate: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 			},
-			wantUpdated:     200.00,
+			wantUpdated:     decimal.RequireFromString("200.00"),
 			wantDaysOverdue: 0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			results := calc.Apply([]entity.Debt{tt.debt})
+			results, err := calc.Apply([]entity.Debt{tt.debt})
+			if err != nil {
+				t.Fatalf("Apply: %v", err)
+			}
 			if len(results) != 1 {
 				t.Fatalf("expected 1 result, got %d", len(results))
 			}
 			got := results[0]
 
-			if got.UpdatedAmount != tt.wantUpdated {
-				t.Errorf("UpdatedAmount = %.2f, want %.2f", got.UpdatedAmount, tt.wantUpdated)
+			if !got.UpdatedAmount.Equal(tt.wantUpdated) {
+				t.Errorf("UpdatedAmount = %s, want %s", got.UpdatedAmount, tt.wantUpdated)
 			}
 			if got.DaysOverdue != tt.wantDaysOverdue {
 				t.Errorf("DaysOverdue = %d, want %d", got.DaysOverdue, tt.wantDaysOverdue)
@@ -120,31 +118,90 @@ func TestCalculator_Apply(t *testing.T) {
 }
 
 func TestCalculator_Apply_MultipleDebts(t *testing.T) {
-	calc := service.NewCalculator(referenceDate)
+	log := logger.NewDiscard()
+	calc := service.NewCalculator(referenceDate, log)
 
 	debts := []entity.Debt{
 		{
 			Type:    entity.DebtTypeIPVA,
-			Amount:  1500.00,
+			Amount:  decimal.RequireFromString("1500.00"),
 			DueDate: time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			Type:    entity.DebtTypeMULTA,
-			Amount:  300.50,
+			Amount:  decimal.RequireFromString("300.50"),
 			DueDate: time.Date(2024, 2, 19, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
-	results := calc.Apply(debts)
+	results, err := calc.Apply(debts)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
 	}
 
-	if results[0].UpdatedAmount != 1800.00 {
-		t.Errorf("IPVA updated = %.2f, want 1800.00", results[0].UpdatedAmount)
+	if !results[0].UpdatedAmount.Equal(decimal.RequireFromString("1800.00")) {
+		t.Errorf("IPVA updated = %s, want 1800.00", results[0].UpdatedAmount)
 	}
-	// SPEC-AMBI-02: correct calc gives 543.91 (81 days), spec example shows 555.93 (85 days).
-	if results[1].UpdatedAmount != 543.91 {
-		t.Errorf("MULTA updated = %.2f, want 543.91", results[1].UpdatedAmount)
+	if !results[1].UpdatedAmount.Equal(decimal.RequireFromString("543.91")) {
+		t.Errorf("MULTA updated = %s, want 543.91", results[1].UpdatedAmount)
+	}
+}
+
+func TestCalculator_Apply_UnknownType_AllUnknown(t *testing.T) {
+	log := logger.NewDiscard()
+	calc := service.NewCalculator(referenceDate, log)
+
+	debts := []entity.Debt{
+		{
+			Type:    entity.DebtType("LICENCIAMENTO"),
+			Amount:  decimal.RequireFromString("100.00"),
+			DueDate: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
+	_, err := calc.Apply(debts)
+	if err == nil {
+		t.Fatal("expected error when all debt types are unknown")
+	}
+	if !errors.Is(err, service.ErrAllDebtsUnknownType) {
+		t.Fatalf("error = %v, want ErrAllDebtsUnknownType", err)
+	}
+}
+
+func TestCalculator_Apply_UnknownType_Partial(t *testing.T) {
+	log := logger.NewDiscard()
+	calc := service.NewCalculator(referenceDate, log)
+
+	debts := []entity.Debt{
+		{
+			Type:    entity.DebtTypeIPVA,
+			Amount:  decimal.RequireFromString("1000.00"),
+			DueDate: time.Date(2024, 4, 10, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			Type:    entity.DebtType("LICENCIAMENTO"),
+			Amount:  decimal.RequireFromString("50.00"),
+			DueDate: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
+	results, err := calc.Apply(debts)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	if results[0].Unprocessed {
+		t.Error("IPVA should be processed")
+	}
+	if !results[1].Unprocessed {
+		t.Error("LICENCIAMENTO should be unprocessed")
+	}
+	if !results[1].UpdatedAmount.Equal(decimal.RequireFromString("50.00")) {
+		t.Errorf("unknown type amount = %s, want 50.00", results[1].UpdatedAmount)
 	}
 }

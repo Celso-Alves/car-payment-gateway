@@ -3,7 +3,11 @@
 // adapters must normalize their provider-specific formats into.
 package entity
 
-import "time"
+import (
+	"time"
+
+	"github.com/shopspring/decimal"
+)
 
 // DebtType identifies the category of a vehicle debt.
 // Adding a new category requires only a new constant here and a
@@ -19,32 +23,35 @@ const (
 // independent of the provider format (JSON, XML, etc.).
 type Debt struct {
 	Type    DebtType
-	Amount  float64
+	Amount  decimal.Decimal
 	DueDate time.Time
 }
 
 // UpdatedDebt holds the original debt along with the interest-adjusted amount.
+// Unprocessed is true when no InterestStrategy was registered for Debt.Type
+// (amount passed through without interest).
 type UpdatedDebt struct {
 	Debt
-	UpdatedAmount float64
+	UpdatedAmount decimal.Decimal
 	DaysOverdue   int
+	Unprocessed   bool
 }
 
 // PaymentSummary carries the aggregate totals across all debts.
 type PaymentSummary struct {
-	TotalOriginal float64 `json:"total_original"`
-	TotalUpdated  float64 `json:"total_atualizado"`
+	TotalOriginal decimal.Decimal `json:"total_original"`
+	TotalUpdated  decimal.Decimal `json:"total_atualizado"`
 }
 
 // Installment represents a single credit card installment option.
 type Installment struct {
-	Quantity       int     `json:"quantidade"`
-	InstallmentAmt float64 `json:"valor_parcela"`
+	Quantity int             `json:"quantidade"`
+	Amount   decimal.Decimal `json:"valor_parcela"`
 }
 
 // PixOption represents a PIX payment with the 8% discount applied.
 type PixOption struct {
-	TotalWithDiscount float64 `json:"total_com_desconto"`
+	TotalWithDiscount decimal.Decimal `json:"total_com_desconto"`
 }
 
 // CardOption holds the available installment plans for credit card payment.
@@ -55,10 +62,10 @@ type CardOption struct {
 // PaymentOption represents a complete payment simulation for a given
 // debt grouping (TOTAL, SOMENTE_IPVA, SOMENTE_MULTAS, etc.).
 type PaymentOption struct {
-	Type       string     `json:"tipo"`
-	BaseAmount float64    `json:"valor_base"`
-	Pix        PixOption  `json:"pix"`
-	Card       CardOption `json:"cartao_credito"`
+	Type       string          `json:"tipo"`
+	BaseAmount decimal.Decimal `json:"valor_base"`
+	Pix        PixOption       `json:"pix"`
+	Card       CardOption      `json:"cartao_credito"`
 }
 
 // ConsultResult is the full API response payload (SPEC-006).

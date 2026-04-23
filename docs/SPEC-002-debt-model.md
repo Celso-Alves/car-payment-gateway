@@ -88,7 +88,7 @@ Este é o tipo retornado pelo use case e serializado pelo handler HTTP.
 ```
 adapters/provider  →  entity.Debt        (normaliza para cá)
 domain/service     →  entity.*           (opera sobre estes tipos)
-adapters/http      →  entity.ConsultResult (serializa este tipo)
+adapters/httpapi   →  entity.ConsultResult (serializa este tipo)
 ```
 
 Nenhum tipo fora de `entity/` conhece JSON de provedor ou XML de provedor.

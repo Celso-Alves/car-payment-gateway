@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
+	"github.com/shopspring/decimal"
 )
 
 // providerBResponse is the XML wire format for Provider B.
 // This mirrors a legacy DETRAN-SP style SOAP/REST response.
 type providerBResponse struct {
-	XMLName xml.Name      `xml:"response"`
-	Plate   string        `xml:"plate"`
+	XMLName xml.Name        `xml:"response"`
+	Plate   string          `xml:"plate"`
 	Debts   []providerBDebt `xml:"debts>debt"`
 }
 
@@ -28,13 +29,22 @@ type providerBDebt struct {
 // completely different wire format (XML vs JSON) and different field names
 // (category/value/expiration vs type/amount/due_date). The adapter
 // normalises both into the same canonical entity.Debt.
-type ProviderB struct {
-	payload []byte
+type ProviderB struct{}
+
+// NewProviderB constructs a ProviderB adapter.
+func NewProviderB() *ProviderB {
+	return &ProviderB{}
 }
 
-// NewProviderB constructs a ProviderB with a static XML payload that
-// mirrors the spec's Provider B example exactly.
-func NewProviderB(plate string) *ProviderB {
+func (p *ProviderB) Name() string { return "ProviderB-XML" }
+
+// FetchDebts builds a deterministic XML payload for the given plate and
+// normalises it into the canonical []entity.Debt model (SPEC-002).
+func (p *ProviderB) FetchDebts(ctx context.Context, plate string) ([]entity.Debt, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("%s: context cancelled: %w", p.Name(), err)
+	}
+
 	raw := fmt.Sprintf(`<response>
 	<plate>%s</plate>
 	<debts>
@@ -42,20 +52,9 @@ func NewProviderB(plate string) *ProviderB {
 		<debt><category>MULTA</category><value>300.50</value><expiration>2024-02-19</expiration></debt>
 	</debts>
 </response>`, plate)
-	return &ProviderB{payload: []byte(raw)}
-}
-
-func (p *ProviderB) Name() string { return "ProviderB-XML" }
-
-// FetchDebts parses the XML payload and normalises it into the canonical
-// []entity.Debt model (SPEC-002).
-func (p *ProviderB) FetchDebts(ctx context.Context, _ string) ([]entity.Debt, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("%s: context cancelled: %w", p.Name(), err)
-	}
 
 	var resp providerBResponse
-	if err := xml.Unmarshal(p.payload, &resp); err != nil {
+	if err := xml.Unmarshal([]byte(raw), &resp); err != nil {
 		return nil, fmt.Errorf("%s: xml unmarshal: %w", p.Name(), err)
 	}
 
@@ -67,7 +66,7 @@ func (p *ProviderB) FetchDebts(ctx context.Context, _ string) ([]entity.Debt, er
 		}
 		debts = append(debts, entity.Debt{
 			Type:    entity.DebtType(d.Category),
-			Amount:  d.Value,
+			Amount:  decimal.NewFromFloat(d.Value),
 			DueDate: dueDate,
 		})
 	}

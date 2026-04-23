@@ -2,7 +2,13 @@
 
 BINARY   := car-payment-gateway
 IMAGE    := car-payment-gateway:latest
-PORT     ?= 8080
+PORT     ?= 3000
+
+# Sobrescreve PORT (e outras chaves) a partir de .env, se existir
+-include .env
+export PORT
+export ADDR
+export REFERENCE_DATE
 
 ## Run the server locally (hot-reload friendly: just re-run make run)
 run:
@@ -39,7 +45,7 @@ docker-build:
 
 ## Run the service in Docker
 docker-run: docker-build
-	docker run --rm -p $(PORT):$(PORT) -e PORT=$(PORT) $(IMAGE)
+	docker run --rm -p $(PORT):$(PORT) -e PORT=$(PORT) -e ADDR=$(ADDR) -e REFERENCE_DATE=$(REFERENCE_DATE) $(IMAGE)
 
 ## Demo fallback: start with MockFailing provider first in chain
 demo-fallback:

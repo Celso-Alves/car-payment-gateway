@@ -56,5 +56,5 @@ main.go (wiring)
 | SPEC-003 | `internal/domain/service/interest.go` |
 | SPEC-004 | `internal/domain/service/payment.go` |
 | SPEC-005 | `internal/application/usecase/consult_debts.go` |
-| SPEC-006 | `internal/adapters/http/handler.go` |
+| SPEC-006 | `internal/adapters/httpapi/handler.go` |
 | SPEC-007 | `internal/domain/service/payment.go` (função `groupByType`) |

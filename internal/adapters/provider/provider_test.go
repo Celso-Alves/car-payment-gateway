@@ -8,10 +8,11 @@ import (
 
 	"github.com/celsoadsjr/car-payment-gateway/internal/adapters/provider"
 	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
+	"github.com/shopspring/decimal"
 )
 
 func TestProviderA_FetchDebts(t *testing.T) {
-	p := provider.NewProviderA("ABC1234")
+	p := provider.NewProviderA()
 
 	debts, err := p.FetchDebts(context.Background(), "ABC1234")
 	if err != nil {
@@ -21,7 +22,7 @@ func TestProviderA_FetchDebts(t *testing.T) {
 }
 
 func TestProviderB_FetchDebts(t *testing.T) {
-	p := provider.NewProviderB("ABC1234")
+	p := provider.NewProviderB()
 
 	debts, err := p.FetchDebts(context.Background(), "ABC1234")
 	if err != nil {
@@ -31,7 +32,7 @@ func TestProviderB_FetchDebts(t *testing.T) {
 }
 
 func TestProviderA_CancelledContext(t *testing.T) {
-	p := provider.NewProviderA("ABC1234")
+	p := provider.NewProviderA()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // already cancelled
@@ -43,7 +44,7 @@ func TestProviderA_CancelledContext(t *testing.T) {
 }
 
 func TestProviderB_CancelledContext(t *testing.T) {
-	p := provider.NewProviderB("ABC1234")
+	p := provider.NewProviderB()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -93,8 +94,8 @@ func assertDebts(t *testing.T, name string, debts []entity.Debt) {
 	if ipva == nil {
 		t.Fatalf("%s: no IPVA debt found", name)
 	}
-	if ipva.Amount != 1500.00 {
-		t.Errorf("%s: IPVA amount = %.2f, want 1500.00", name, ipva.Amount)
+	if !ipva.Amount.Equal(decimal.RequireFromString("1500.00")) {
+		t.Errorf("%s: IPVA amount = %s, want 1500.00", name, ipva.Amount)
 	}
 	if ipva.DueDate != time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC) {
 		t.Errorf("%s: IPVA due_date = %v, want 2024-01-10", name, ipva.DueDate)
@@ -104,14 +105,14 @@ func assertDebts(t *testing.T, name string, debts []entity.Debt) {
 	if multa == nil {
 		t.Fatalf("%s: no MULTA debt found", name)
 	}
-	if multa.Amount != 300.50 {
-		t.Errorf("%s: MULTA amount = %.2f, want 300.50", name, multa.Amount)
+	if !multa.Amount.Equal(decimal.RequireFromString("300.50")) {
+		t.Errorf("%s: MULTA amount = %s, want 300.50", name, multa.Amount)
 	}
 }
 
-func findByType(debts []entity.Debt, t entity.DebtType) *entity.Debt {
+func findByType(debts []entity.Debt, typ entity.DebtType) *entity.Debt {
 	for i := range debts {
-		if debts[i].Type == t {
+		if debts[i].Type == typ {
 			return &debts[i]
 		}
 	}
