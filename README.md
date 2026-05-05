@@ -90,50 +90,66 @@ Consulta débitos e simula opções de pagamento para uma placa de veículo.
 
 **Resposta (200):** valores monetários são **strings** decimais (`shopspring/decimal`).
 
-Com `REFERENCE_DATE=2024-05-10` (reproduz os números do documento de teste):
+Com `REFERENCE_DATE=2024-05-10` (alinhado com HomeTest.pdf):
 
 ```json
 {
   "placa": "ABC1234",
+  "debitos": [
+    {
+      "tipo": "IPVA",
+      "valor_original": "1500.00",
+      "valor_atualizado": "1800.00",
+      "vencimento": "2024-01-10",
+      "dias_atraso": 121
+    },
+    {
+      "tipo": "MULTA",
+      "valor_original": "300.50",
+      "valor_atualizado": "555.93",
+      "vencimento": "2024-02-15",
+      "dias_atraso": 85
+    }
+  ],
   "resumo": {
-    "total_original": "1800.5",
-    "total_atualizado": "2343.91"
+    "total_original": "1800.50",
+    "total_atualizado": "2355.93"
   },
   "pagamentos": {
     "opcoes": [
       {
         "tipo": "TOTAL",
-        "valor_base": "2343.91",
-        "pix": { "total_com_desconto": "2156.4" },
+        "valor_base": "2355.93",
+        "pix": { "total_com_desconto": "2238.13" },
         "cartao_credito": {
           "parcelas": [
-            { "quantidade": 1,  "valor_parcela": "2402.51" },
-            { "quantidade": 6,  "valor_parcela": "453.04"  },
-            { "quantidade": 12, "valor_parcela": "262.69" }
+            { "quantidade": 1,  "valor_parcela": "2355.93" },
+            { "quantidade": 6,  "valor_parcela": "417.81"  },
+            { "quantidade": 12, "valor_parcela": "233.07" }
           ]
         }
       },
       {
         "tipo": "SOMENTE_IPVA",
-        "valor_base": "1800",
-        "pix": { "total_com_desconto": "1656" },
+        "valor_base": "1800.00",
+        "pix": { "total_com_desconto": "1710.00" },
         "cartao_credito": {
           "parcelas": [
-            { "quantidade": 1,  "valor_parcela": "1845" },
-            { "quantidade": 6,  "valor_parcela": "347.91" },
-            { "quantidade": 12, "valor_parcela": "201.73" }
+            { "quantidade": 1,  "valor_parcela": "1800.00" },
+            { "quantidade": 6,  "valor_parcela": "319.23"  },
+            { "quantidade": 12, "valor_parcela": "178.07" }
           ]
         }
       },
       {
-        "tipo": "SOMENTE_MULTA",
-        "valor_base": "543.91",
-        "pix": { "total_com_desconto": "500.4" },
+        "tipo": "SOMENTE_MULTAS",
+        "valor_base": "555.93",
+        "pix": { "total_com_desconto": "528.13" },
         "cartao_credito": {
           "parcelas": [
-            { "quantidade": 1,  "valor_parcela": "557.51" },
-            { "quantidade": 6,  "valor_parcela": "105.13" },
-            { "quantidade": 12, "valor_parcela": "60.96" }
+            { "quantidade": 1,  "valor_parcela": "555.93" },
+            { "quantidade": 6,  "valor_parcela": "98.58"  },
+            { "quantidade": 12, "valor_parcela": "55.00" }
           ]
         }
       }

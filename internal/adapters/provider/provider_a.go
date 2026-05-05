@@ -47,7 +47,7 @@ func (p *ProviderA) FetchDebts(ctx context.Context, plate string) ([]entity.Debt
 		"vehicle": %q,
 		"debts": [
 			{"type": "IPVA",  "amount": 1500.00, "due_date": "2024-01-10"},
-			{"type": "MULTA", "amount": 300.50,  "due_date": "2024-02-19"}
+			{"type": "MULTA", "amount": 300.50,  "due_date": "2024-02-15"}
 		]
 	}`, plate)
 

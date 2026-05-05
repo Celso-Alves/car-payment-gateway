@@ -49,7 +49,7 @@ func (p *ProviderB) FetchDebts(ctx context.Context, plate string) ([]entity.Debt
 	<plate>%s</plate>
 	<debts>
 		<debt><category>IPVA</category><value>1500.00</value><expiration>2024-01-10</expiration></debt>
-		<debt><category>MULTA</category><value>300.50</value><expiration>2024-02-19</expiration></debt>
+		<debt><category>MULTA</category><value>300.50</value><expiration>2024-02-15</expiration></debt>
 	</debts>
 </response>`, plate)
 

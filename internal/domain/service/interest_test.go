@@ -35,14 +35,14 @@ func TestCalculator_Apply(t *testing.T) {
 			wantDaysOverdue: 121,
 		},
 		{
-			name: "MULTA: 81 days overdue, no cap (spec example used 85 days — SPEC-AMBI-02)",
+			name: "MULTA: 85 days overdue, no cap (HomeTest.pdf spec)",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeMULTA,
 				Amount:  decimal.RequireFromString("300.50"),
-				DueDate: time.Date(2024, 2, 19, 0, 0, 0, 0, time.UTC),
+				DueDate: time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC),
 			},
-			wantUpdated:     decimal.RequireFromString("543.91"),
-			wantDaysOverdue: 81,
+			wantUpdated:     decimal.RequireFromString("555.93"),
+			wantDaysOverdue: 85,
 		},
 		{
 			name: "IPVA: interest below cap, not capped",
@@ -130,7 +130,7 @@ func TestCalculator_Apply_MultipleDebts(t *testing.T) {
 		{
 			Type:    entity.DebtTypeMULTA,
 			Amount:  decimal.RequireFromString("300.50"),
-			DueDate: time.Date(2024, 2, 19, 0, 0, 0, 0, time.UTC),
+			DueDate: time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -145,8 +145,8 @@ func TestCalculator_Apply_MultipleDebts(t *testing.T) {
 	if !results[0].UpdatedAmount.Equal(decimal.RequireFromString("1800.00")) {
 		t.Errorf("IPVA updated = %s, want 1800.00", results[0].UpdatedAmount)
 	}
-	if !results[1].UpdatedAmount.Equal(decimal.RequireFromString("543.91")) {
-		t.Errorf("MULTA updated = %s, want 543.91", results[1].UpdatedAmount)
+	if !results[1].UpdatedAmount.Equal(decimal.RequireFromString("555.93")) {
+		t.Errorf("MULTA updated = %s, want 555.93", results[1].UpdatedAmount)
 	}
 }
 

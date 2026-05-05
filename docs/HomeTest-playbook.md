@@ -1,10 +1,10 @@
 # Playbook — demonstração alinhada ao HomeTest
 
-Roteiro para apresentar, em ordem, os **requisitos obrigatórios**, o que seria **bacana** e a **entrega** descritos no [HomeTest.pdf](HomeTest.pdf). Ajuste tempos conforme o slot (sugestão: 15–25 minutos + perguntas).
+Roteiro para apresentar os **requisitos** do [HomeTest.pdf](HomeTest.pdf): consulta 2 provedores (ProviderA JSON + ProviderB XML), normaliza débitos, aplica juros exatos, simula pagamento (PIX 5% + cartão 2.5%/mês), e oferece 3 opções (total + 2 parciais).
 
-**Pré-requisitos:** Go 1.24+, terminal, `curl` ou REST Client (VS Code / Cursor extension: `humao.rest-client`), opcionalmente IA (Cursor) para o trecho de “modificação ao vivo”.
+**Setup:** Go 1.24+, `REFERENCE_DATE=2024-05-10` (fixa os números), terminal + REST Client.
 
-**Atalho:** Toda requisição exemplificada neste playbook está em [`http-requests/api.rest`](../http-requests/api.rest). Use “Send All Requests” (botão direito no editor) para rodar a suite sequencial de testes.
+**Placa:** apenas `ABC1234` (IPVA 1500 venc 2024-01-10 + MULTA 300.50 venc 2024-02-15).
 
 ---
 
@@ -18,55 +18,54 @@ Roteiro para apresentar, em ordem, os **requisitos obrigatórios**, o que seria 
 
 ---
 
-## 1. Rodar o happy path — múltiplos provedores e normalização (3–4 min)
+## 1. Happy path — múltiplos provedores e normalização (2–3 min)
 
-**Objetivo do HomeTest:** consultar provedores, normalizar dados, provar que A e B são equivalentes após normalização.
+**Objetivo:** provar que ProviderA (JSON) e ProviderB (XML) retornam dados equivalentes após normalização.
 
-1. Subir sem mocks:
+1. Subir:
 
    ```bash
    REFERENCE_DATE=2024-05-10 make run
    ```
 
-2. Consultar (use **exemplo 1** de [`http-requests/api.rest`](../http-requests/api.rest)):
+2. Consultar ABC1234:
 
    ```bash
    curl -s -X POST http://localhost:3000/api/v1/debts \
      -H "Content-Type: application/json" \
      -d '{"placa":"ABC1234"}' | jq .
    ```
-   
-   Ou testar normalização com **exemplo 2** (placa com hífen):
-   
-   ```bash
-   curl -s -X POST http://localhost:3000/api/v1/debts \
-     -H "Content-Type: application/json" \
-     -d '{"placa":"ABC-1D23"}' | jq .
-   ```
 
-3. **O que narrar:**
-   - **Provider A** fala JSON (`internal/adapters/provider/provider_a.go`); **Provider B** fala XML (`provider_b.go`).
-   - Ambos mapeiam para `entity.Debt` (SPEC-002) — **normalização** no adapter, não no domínio.
-   - A cadeia tenta provedores em ordem; com servidor saudável, o **primeiro sucesso** vence (Provider A na prática).
-   - Placa com hífen, espaços ou minúsculas (exemplos 2–3 em `api.rest`) são **aceitos e normalizados** antes de consultar provedores.
+3. **O que mostrar:**
+   - **ProviderA**: JSON com campos `vehicle`, `debts[].type`, `debts[].amount`, `debts[].due_date`
+   - **ProviderB**: XML com `plate`, `debts>debt>category`, `value`, `expiration`
+   - Ambos normalizam → `entity.Debt` (estrutura única)
+   - Na prática, ProviderA retorna primeiro; se falhar, fallback para B
 
-4. **Opcional (30 s):** abrir um dos arquivos de adapter e mostrar um campo renomeado (`vehicle` vs `plate`, `due_date` vs `expiration`) chegando no mesmo `Debt`.
+4. **Valores esperados:**
+   - IPVA: original 1500.00 → atualizado 1800.00 (121 dias, 0.33%/dia com teto 20%)
+   - MULTA: original 300.50 → atualizado 555.93 (85 dias, 1%/dia)
 
 ---
 
 ## 2. Regras de negócio — juros e pagamento (2–3 min)
 
-**Objetivo do HomeTest:** IPVA 0,33%/dia com teto 20%; MULTA 1%/dia sem teto; PIX com desconto; cartão 1/6/12x com juros compostos mensais; opções total e parcial.
+**Objetivo:** IPVA 0.33%/dia (máx 20%); MULTA 1%/dia (sem máx); PIX 5%; cartão 1x/6x/12x com 2.5%/mês.
 
-1. No mesmo `curl`, apontar no JSON:
-   - `resumo.total_original` / `total_atualizado`
-   - `pagamentos.opcoes` com `TOTAL`, `SOMENTE_IPVA`, `SOMENTE_MULTA` (no código o tipo é `SOMENTE_MULTA`, alinhado à constante `MULTA` — diferença de nomenclatura vs `SOMENTE_MULTAS` do PDF)
+1. **JSON retornado:**
+   - `debitos[]` — detalha cada débito (valor_original, valor_atualizado, dias_atraso)
+   - `resumo` — totais
+   - `pagamentos.opcoes[]` — TOTAL, SOMENTE_IPVA, SOMENTE_MULTAS (cada com PIX + cartão)
 
-2. **Onde está no código:**
-   - Juros: `internal/domain/service/interest.go` — **Strategy** por `DebtType`.
-   - Pagamento: `internal/domain/service/payment.go` — agrupamento + PIX + parcelas.
+2. **Cálculos:**
+   - **Juros IPVA**: 1500 × 0.33% × 121 dias = 1980, mas limitado a 20% = 1800
+   - **Juros MULTA**: 300.50 × 1% × 85 = 255.43 → total 555.93
+   - **PIX TOTAL**: 2355.93 × 5% desconto = 2238.13
+   - **Cartão 6x**: 2355.93 × (1.025)^6 / 6 = 417.81/parcela
 
-3. **Trade-off a mencionar:** o PDF cita desconto PIX de **5%**; a implementação segue SPEC-004 com **8%** (ver comentários no código e README). Se perguntarem: decisão documentada vs enunciado — apontar `SPEC-AMBI` se existir divergência registrada.
+3. **Código:**
+   - Juros: `internal/domain/service/interest.go` (Strategy por DebtType)
+   - Pagamento: `internal/domain/service/payment.go` (agrupamento + opções)
 
 ---
 
@@ -137,28 +136,27 @@ Oferecer fazer uma alteração **com IA** (ex.: comentar um novo tipo fictício)
 
 ---
 
-## 7. Validação de entrada e tratamento de erro (1 min)
+## 7. Validação de entrada (1 min)
 
-**Objetivo do HomeTest:** input validation, mapeamento de erros HTTP, segurança (MaxBytesReader, strict JSON).
+**Objetivo:** input validation, erros HTTP, hardening (MaxBytesReader, strict JSON).
 
-Todos os cenários em [`http-requests/api.rest`](../http-requests/api.rest) (exemplos 4–10):
-- Placa ausente → 400
-- Placa vazia/inválida → 400
-- JSON malformado → 400
-- Campo desconhecido → 400 (`DisallowUnknownFields`)
-- Corpo > 1 MiB → 413 (testado em `handler_test.go:TestHandler_ConsultDebts_BodyTooLarge`)
-
-Ou rapidamente na linha de comando:
+Testes na linha de comando:
 
 ```bash
 # Campo ausente
 curl -X POST http://localhost:3000/api/v1/debts \
   -H "Content-Type: application/json" -d '{}' | jq .
+# → 400, "campo 'placa' é obrigatório"
 
-# Placa inválida (ver exemplo 6 em api.rest)
+# Placa inválida
 curl -X POST http://localhost:3000/api/v1/debts \
   -H "Content-Type: application/json" -d '{"placa":"INVALID"}' | jq .
+# → 400, "formato de placa inválido"
 ```
+
+Outros casos (testados em `handler_test.go`):
+- Campo desconhecido → 400 (`DisallowUnknownFields`)
+- Corpo > 1 MiB → 413 (`MaxBytesReader`)
 
 ---
 
@@ -209,20 +207,21 @@ Apontar seções do `README.md` raiz e docs em `docs/` (SPECs).
 
 ---
 
-## Checklist rápido (imprimir ou tick na hora)
+## Checklist
 
-- [ ] Happy path (`curl` ou `api.rest` exemplo 1–3): múltiplos provedores + normalização  
-- [ ] Juros + PIX + cartão + total/parcial (via `pagamentos.opcoes`)  
-- [ ] Camadas (adapters / domain / usecase / cmd)  
-- [ ] Extensão (porta + registro ou nova strategy)  
-- [ ] Fallback (`demo-fallback`) e timeout (`demo-timeout`)  
-- [ ] Retry (`PROVIDER_MAX_ATTEMPTS`) mencionado ou demonstrado  
-- [ ] Validação (400 / 413): usar `api.rest` exemplos 4–10 ou `curl` quick test  
-- [ ] `make test` (e opcionalmente `-race`)  
-- [ ] Logs estruturados + placa mascarada (visível em `demo-*`)  
-- [ ] Padrões nomeados (Strategy, Adapter, …)  
-- [ ] README / decisões / trade-offs  
-- [ ] Uso de IA em uma micro-alteração (pedido do PDF)  
+- [ ] **Happy path:** ABC1234 retorna IPVA 1800.00 + MULTA 555.93 → total 2355.93
+- [ ] **Provedores:** ProviderA (JSON) + ProviderB (XML), fallback automático
+- [ ] **Juros:** IPVA 0.33%/dia cap 20%, MULTA 1%/dia sem cap
+- [ ] **Pagamento:** PIX 5% desconto, cartão 2.5%/mês × 1/6/12
+- [ ] **Opções:** TOTAL (2355.93) + SOMENTE_IPVA (1800.00) + SOMENTE_MULTAS (555.93)
+- [ ] **Camadas:** adapters / domain / usecase / cmd isolados
+- [ ] **Fallback:** `make demo-fallback` mostra WARN + retry
+- [ ] **Timeout:** `make demo-timeout` com mock lento
+- [ ] **Validação:** campo ausente/inválido → 400, corpo > 1MB → 413
+- [ ] **Testes:** `make test`, cobertura
+- [ ] **Logs:** estruturados, placa mascarada
+- [ ] **Padrões:** Strategy, Adapter, Facade
+- [ ] **README:** decisões, trade-offs, melhorias  
 
 ---
 

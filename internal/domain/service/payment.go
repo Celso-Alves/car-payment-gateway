@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	pixDiscountRate = decimal.RequireFromString("0.08")
+	pixDiscountRate = decimal.RequireFromString("0.05")
 	onePoint025     = decimal.RequireFromString("1.025")
 )
 
@@ -87,7 +87,7 @@ func buildOption(label string, base decimal.Decimal) entity.PaymentOption {
 	}
 }
 
-// buildPix applies the 8% PIX discount (SPEC-004).
+// buildPix applies the 5% PIX discount (SPEC-004, HomeTest.pdf).
 func buildPix(base decimal.Decimal) entity.PixOption {
 	one := decimal.NewFromInt(1)
 	factor := one.Sub(pixDiscountRate)
