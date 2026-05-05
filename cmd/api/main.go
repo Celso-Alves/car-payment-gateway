@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -36,6 +38,8 @@ func main() {
 
 	providerTimeout := 3 * time.Second
 	requestTimeout := 10 * time.Second
+	maxAttempts := envProviderMaxAttempts(log)
+	retryBackoff := envRetryBackoffMS(log)
 
 	providers := buildProviders(log)
 
@@ -49,6 +53,8 @@ func main() {
 		log,
 		providerTimeout,
 		requestTimeout,
+		maxAttempts,
+		retryBackoff,
 	)
 
 	handler := httpapi.NewHandler(uc, log, requestTimeout)
@@ -96,11 +102,22 @@ func main() {
 }
 
 // buildProviders constructs the ordered provider list.
-// ENABLE_MOCK_FAILING=true prepends the failing mock to demonstrate fallback.
+// ENABLE_MOCK_FAILING=true prepends the failing mock (immediate error) for fallback demos.
+// ENABLE_MOCK_SLOW=true prepends MockFailing with SimulateTimeout for per-provider timeout demos.
+// If both are set, ENABLE_MOCK_SLOW takes precedence (documented in SPEC-005).
 func buildProviders(log *slog.Logger) []provider.Provider {
 	var providers []provider.Provider
 
-	if os.Getenv("ENABLE_MOCK_FAILING") == "true" {
+	slow := os.Getenv("ENABLE_MOCK_SLOW") == "true"
+	fail := os.Getenv("ENABLE_MOCK_FAILING") == "true"
+
+	if slow {
+		if fail {
+			log.Warn("ENABLE_MOCK_SLOW and ENABLE_MOCK_FAILING both set; using slow (timeout) mock only")
+		}
+		log.Warn("MockFailing (SimulateTimeout) enabled — timeout demo mode active")
+		providers = append(providers, &provider.MockFailing{SimulateTimeout: true})
+	} else if fail {
 		log.Warn("MockFailing provider enabled — fallback demo mode active")
 		providers = append(providers, &provider.MockFailing{})
 	}
@@ -128,4 +145,32 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func envProviderMaxAttempts(log *slog.Logger) int {
+	const key = "PROVIDER_MAX_ATTEMPTS"
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return 1
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		log.Warn("invalid PROVIDER_MAX_ATTEMPTS, using 1", slog.String("key", key), slog.String("value", v))
+		return 1
+	}
+	return n
+}
+
+func envRetryBackoffMS(log *slog.Logger) time.Duration {
+	const key = "PROVIDER_RETRY_BACKOFF_MS"
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return 0
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		log.Warn("invalid PROVIDER_RETRY_BACKOFF_MS, using 0", slog.String("key", key), slog.String("value", v))
+		return 0
+	}
+	return time.Duration(n) * time.Millisecond
 }

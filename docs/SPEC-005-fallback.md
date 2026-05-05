@@ -6,68 +6,84 @@ Implementado — `internal/application/usecase/consult_debts.go`
 ## Motivação
 
 Provedores externos são não-confiáveis: podem ter downtime, lentidão, erros de rede.
-O sistema deve ser **resiliente**: se um provedor falha, o próximo é tentado automaticamente.
+O sistema deve ser **resiliente**: o mesmo provedor pode ser **re-tentado** um número limitado de vezes; se continuar falhando, o **próximo** da lista é tentado automaticamente (**fallback**).
 
 ## Algoritmo
 
 ```
 for each provider in ordered_list:
-    ctx_with_timeout = context.WithTimeout(parent_ctx, 3s)
-    debts, err = provider.FetchDebts(ctx_with_timeout, plate)
-    cancel()                             // libera recursos imediatamente
+    for attempt = 1 .. maxAttemptsPerProvider:
+        if parent_ctx already done:
+            return ErrAllProvidersFailed (wrapped)
 
-    if err == nil:
-        log.Info("provider succeeded", provider, latency)
-        return debts
+        ctx_with_timeout = context.WithTimeout(parent_ctx, providerTimeout)
+        debts, err = provider.FetchDebts(ctx_with_timeout, plate)
+        cancel()
 
-    log.Warn("provider failed, trying next", provider, latency, error)
+        if err == nil:
+            log.Info("provider succeeded", provider, attempt, maxAttempts, latency)
+            return debts
+
+        if parent_ctx done:
+            return ErrAllProvidersFailed (wrapped)
+
+        if attempt < maxAttemptsPerProvider:
+            log.Warn("provider attempt failed, retrying", ...)
+            optional fixed backoff (select: sleep or parent_ctx.Done)
+            continue
+
+        log.Warn("provider failed, trying next", ...)
 
 return ErrAllProvidersFailed
 ```
 
+Valores padrão no processo (`cmd/api/main.go`): `providerTimeout` 3s, `maxAttemptsPerProvider` 1 (sem retry), `retryBackoff` 0.
+
 ## Timeout por provedor
 
-Cada tentativa recebe seu próprio contexto com timeout de **3 segundos**,
+Cada chamada a `FetchDebts` recebe seu próprio contexto com **timeout por tentativa** (3s por padrão),
 independente do contexto pai (requisição HTTP com 10 segundos).
 
 Isso garante que um provider lento não esgota o tempo total disponível
-antes do fallback ser tentado.
+antes do fallback ou do próximo retry ser tentado.
 
 ```go
 pCtx, cancel := context.WithTimeout(ctx, uc.providerTimeout)
 defer cancel()
 ```
 
-O timeout é injetado via construtor (`providerTimeout time.Duration`),
+O timeout e a política de retry são injetados via construtor,
 permitindo valores diferentes em produção e testes.
+
+## Variáveis de ambiente (processo)
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `PROVIDER_MAX_ATTEMPTS` | `1` | Tentativas por provedor antes de passar ao próximo (mínimo 1). |
+| `PROVIDER_RETRY_BACKOFF_MS` | `0` | Pausa fixa entre tentativas no **mesmo** provedor (ms). `0` desliga. |
+| `ENABLE_MOCK_FAILING` | `false` | Insere `MockFailing` imediato no início da cadeia (demo de fallback). |
+| `ENABLE_MOCK_SLOW` | `false` | Insere `MockFailing{SimulateTimeout: true}` no início (demo de timeout por tentativa). |
+
+Se `ENABLE_MOCK_SLOW` e `ENABLE_MOCK_FAILING` estiverem ambos `true`, **só o modo slow** é registrado e um WARN explica a precedência.
 
 ## Comportamentos especificados
 
 | Cenário | Resultado esperado |
 |---------|--------------------|
 | Provider A disponível | Retorna resultado de A |
-| Provider A falha, B disponível | WARN para A, INFO para B, retorna resultado de B |
+| Provider A falha temporariamente e depois ok (com retry) | WARN de retry, depois INFO de sucesso no mesmo A |
+| Provider A esgota tentativas, B disponível | WARN em A, INFO em B, retorna resultado de B |
 | Todos os providers falham | Retorna `ErrAllProvidersFailed` |
-| Provider A excede timeout | `context.DeadlineExceeded`, tenta B |
-| Contexto pai cancelado | Propaga cancelamento, retorna erro |
+| Provider A excede timeout por tentativa | Erro de contexto, retry ou próximo provedor conforme política |
+| Contexto pai cancelado | Não prolonga backoff; retorna `ErrAllProvidersFailed` envolvendo o erro de contexto |
 
 ## Logs estruturados por tentativa
 
-Cada tentativa registra campos padronizados para facilitar observabilidade:
-
-```json
-{"level":"WARN","msg":"provider failed, trying next",
- "provider":"MockFailing","latency":101209625,
- "plate":"ABC1234","error":"context deadline exceeded"}
-
-{"level":"INFO","msg":"provider succeeded",
- "provider":"ProviderA-JSON","latency":170583,
- "plate":"ABC1234"}
-```
+Cada tentativa registra campos padronizados (`provider`, `attempt`, `maxAttempts`, `latency`, `plate` mascarada, `error` em falha).
 
 ## Demo em tempo real
 
-Para demonstrar fallback na apresentação:
+**Fallback (falha imediata no primeiro provedor):**
 
 ```bash
 ENABLE_MOCK_FAILING=true make run
@@ -75,8 +91,15 @@ ENABLE_MOCK_FAILING=true make run
 make demo-fallback
 ```
 
+**Timeout (primeiro provedor segura até o deadline da tentativa):**
+
+```bash
+make demo-timeout
+# equivalente a ENABLE_MOCK_SLOW=true go run ./cmd/api/...
+```
+
 O `MockFailing` é inserido como **primeiro** provider na chain.
-Os logs mostram claramente o WARN do fallback seguido do INFO do sucesso.
+Os logs mostram WARN(s) e em seguida INFO do sucesso no próximo provedor saudável.
 
 ## `MockFailing` — dois modos
 
@@ -111,4 +134,7 @@ Arquivo: `internal/application/usecase/consult_debts_test.go`
 | `TestConsultDebts_Execute_FallbackToProviderB` | MockFailing → fallback para A |
 | `TestConsultDebts_Execute_AllProvidersFail` | Todos falham → `ErrAllProvidersFailed` |
 | `TestConsultDebts_Execute_ProviderTimeout` | Timeout 100ms → fallback para A |
+| `TestConsultDebts_Execute_RetryThenSuccess` | Flaky falha 2x, 3ª tentativa ok no mesmo provedor |
+| `TestConsultDebts_Execute_RetryExhaustedThenFallback` | Esgota 3 tentativas no flaky → Provider A |
+| `TestConsultDebts_Execute_BackoffRespectsCancellation` | Backoff interrompido por `ctx.Cancel` |
 | `TestConsultDebts_Execute_PaymentOptions` | Opções de pagamento presentes no resultado |

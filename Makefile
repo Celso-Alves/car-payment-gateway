@@ -1,4 +1,4 @@
-.PHONY: run build test test-verbose lint docker-build docker-run clean
+.PHONY: run build test test-verbose lint docker-build docker-run clean demo-fallback demo-timeout
 
 BINARY   := car-payment-gateway
 IMAGE    := car-payment-gateway:latest
@@ -12,7 +12,7 @@ export REFERENCE_DATE
 
 ## Run the server locally (hot-reload friendly: just re-run make run)
 run:
-	go run ./cmd/api/...
+	PORT=$(PORT) REFERENCE_DATE=$(REFERENCE_DATE) go run ./cmd/api/...
 
 ## Build the production binary
 build:
@@ -47,9 +47,13 @@ docker-build:
 docker-run: docker-build
 	docker run --rm -p $(PORT):$(PORT) -e PORT=$(PORT) -e ADDR=$(ADDR) -e REFERENCE_DATE=$(REFERENCE_DATE) $(IMAGE)
 
-## Demo fallback: start with MockFailing provider first in chain
+## Demo fallback: start with MockFailing provider first in chain (port 3002)
 demo-fallback:
-	ENABLE_MOCK_FAILING=true go run ./cmd/api/...
+	PORT=3002 ENABLE_MOCK_FAILING=true REFERENCE_DATE=$(REFERENCE_DATE) go run ./cmd/api/...
+
+## Demo timeout: first provider blocks until per-attempt deadline (then fallback, port 3003)
+demo-timeout:
+	PORT=3003 ENABLE_MOCK_SLOW=true REFERENCE_DATE=$(REFERENCE_DATE) go run ./cmd/api/...
 
 ## Clean build artefacts
 clean:

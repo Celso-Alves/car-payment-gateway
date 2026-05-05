@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	pixDiscountRate = decimal.RequireFromString("0.08")
+	pixDiscountRate = decimal.RequireFromString("0.05")
 	onePoint025     = decimal.RequireFromString("1.025")
 )
 
@@ -53,8 +53,20 @@ func (s *Simulator) Simulate(plate string, debts []entity.UpdatedDebt) entity.Co
 		options = append(options, buildOption(label, groupTotal))
 	}
 
+	debtDetails := make([]entity.DebtDetail, len(debts))
+	for i, d := range debts {
+		debtDetails[i] = entity.DebtDetail{
+			Type:           string(d.Type),
+			OriginalAmount: d.Amount.Round(2),
+			UpdatedAmount:  d.UpdatedAmount.Round(2),
+			DueDate:        d.DueDate.Format("2006-01-02"),
+			DaysOverdue:    d.DaysOverdue,
+		}
+	}
+
 	result := entity.ConsultResult{
-		Plate: plate,
+		Plate:   plate,
+		Debts:   debtDetails,
 		Summary: entity.PaymentSummary{
 			TotalOriginal: totalOriginal.Round(2),
 			TotalUpdated:  totalUpdated.Round(2),
@@ -75,7 +87,7 @@ func buildOption(label string, base decimal.Decimal) entity.PaymentOption {
 	}
 }
 
-// buildPix applies the 8% PIX discount (SPEC-004).
+// buildPix applies the 5% PIX discount (SPEC-004, HomeTest.pdf).
 func buildPix(base decimal.Decimal) entity.PixOption {
 	one := decimal.NewFromInt(1)
 	factor := one.Sub(pixDiscountRate)

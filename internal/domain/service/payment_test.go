@@ -20,7 +20,7 @@ func TestSimulator_Simulate_PIX(t *testing.T) {
 		t.Fatalf("first option type = %q, want TOTAL", totalOpt.Type)
 	}
 
-	wantPix := totalOpt.BaseAmount.Mul(decimal.RequireFromString("0.92")).Round(2)
+	wantPix := totalOpt.BaseAmount.Mul(decimal.RequireFromString("0.95")).Round(2)
 	if !totalOpt.Pix.TotalWithDiscount.Equal(wantPix) {
 		t.Errorf("PIX total = %s, want %s", totalOpt.Pix.TotalWithDiscount, wantPix)
 	}
@@ -91,7 +91,7 @@ func TestSimulator_Simulate_Summary(t *testing.T) {
 	result := sim.Simulate("ABC1234", debts)
 
 	wantOriginal := decimal.RequireFromString("1500.00").Add(decimal.RequireFromString("300.50")).Round(2)
-	wantUpdated := decimal.RequireFromString("1800.00").Add(decimal.RequireFromString("543.91")).Round(2)
+	wantUpdated := decimal.RequireFromString("1800.00").Add(decimal.RequireFromString("555.93")).Round(2)
 
 	if !result.Summary.TotalOriginal.Equal(wantOriginal) {
 		t.Errorf("TotalOriginal = %s, want %s", result.Summary.TotalOriginal, wantOriginal)
@@ -131,7 +131,7 @@ func TestSimulator_Simulate_ExtensibleNewType(t *testing.T) {
 	}
 
 	base := somenteLic.BaseAmount
-	wantPix := base.Mul(decimal.RequireFromString("0.92")).Round(2)
+	wantPix := base.Mul(decimal.RequireFromString("0.95")).Round(2)
 	if !somenteLic.Pix.TotalWithDiscount.Equal(wantPix) {
 		t.Errorf("SOMENTE_LICENCIAMENTO PIX = %s, want %s", somenteLic.Pix.TotalWithDiscount, wantPix)
 	}
@@ -174,7 +174,7 @@ func updatedDebts(t *testing.T) []entity.UpdatedDebt {
 		{
 			Type:    entity.DebtTypeMULTA,
 			Amount:  decimal.RequireFromString("300.50"),
-			DueDate: time.Date(2024, 2, 19, 0, 0, 0, 0, time.UTC),
+			DueDate: time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC),
 		},
 	})
 	if err != nil {

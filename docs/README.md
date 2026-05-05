@@ -24,7 +24,7 @@ chamada HTTP real) não quebra nenhum teste de domínio.
 | [SPEC-002](./SPEC-002-debt-model.md) | Canonical Debt Model | Modelo canônico de débito normalizado de qualquer provedor |
 | [SPEC-003](./SPEC-003-interest-rules.md) | Interest Calculation | Regras de juros por atraso (IPVA com cap, MULTA sem cap) |
 | [SPEC-004](./SPEC-004-payment-simulation.md) | Payment Simulation | Desconto PIX e parcelas de cartão de crédito |
-| [SPEC-005](./SPEC-005-fallback.md) | Fallback Behavior | Resiliência entre provedores com timeout por contexto |
+| [SPEC-005](./SPEC-005-fallback.md) | Fallback Behavior | Retry por provedor, fallback ordenado, timeout por tentativa |
 | [SPEC-006](./SPEC-006-http-api.md) | HTTP API Contract | Contrato de entrada e saída da API REST |
 | [SPEC-007](./SPEC-007-partial-payment.md) | Partial Payment Grouping | Opções TOTAL e SOMENTE_<TIPO> geradas automaticamente |
 | [SPEC-AMBI](./SPEC-AMBI-ambiguities.md) | Ambiguidades | Discrepâncias encontradas no enunciado e decisões tomadas |

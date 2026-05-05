@@ -1,111 +1,13 @@
-# car-payment-gateway — REST Client (VS Code / Cursor extension: humao.rest-client)
-#
-# Variáveis
-@baseUrl = http://localhost:3001
+# car-payment-gateway — REST Client (HomeTest.pdf)
+@baseUrl = http://localhost:3003
 
-# ---------------------------------------------------------------------------
-# Suite sequencial
-# ---------------------------------------------------------------------------
-# Todas as rotas expostas: GET /health, POST /api/v1/debts
-#
-# Para rodar TODOS os testes em ordem (um após o outro):
-#   Paleta de comandos → "Rest Client: Send Request" em cada bloco, ou
-#   clique com botão direito no editor → "Send All Requests" (executa
-#   todos os blocos ### na ordem do arquivo).
-#
-# Ajuste @baseUrl conforme PORT no .env ou ADDR.
-# Cenário 503: só ocorre se todos os provedores falharem (ex.: só mocks
-# falhando). Com ProviderA/B padrão, a consulta válida retorna 200.
-# ---------------------------------------------------------------------------
-
-### 0 — Health (liveness) — esperado: 200, {"status":"ok"}
+### 0 — Health
 GET {{baseUrl}}/health
 
-### 1 — Consulta válida (Mercosul) — esperado: 200 + JSON de débitos
+### 1 — Débitos ABC1234 (IPVA 1500 venc 2024-01-10 + MULTA 300.50 venc 2024-02-15)
 POST {{baseUrl}}/api/v1/debts
 Content-Type: application/json
 
 {
   "placa": "ABC1234"
 }
-
-### 2 — Mesma placa com hífen — esperado: 200 (normalização no servidor)
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-{
-  "placa": "ABC-1D23"
-}
-
-### 3 — Placa minúscula e espaços — esperado: 200 (TrimSpace + ToUpper)
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-{
-  "placa": "  abc1e34  "
-}
-
-### 4 — Validação: campo placa ausente no JSON — esperado: 400, "campo 'placa' é obrigatório"
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-{}
-
-### 5 — Validação: placa string vazia / só espaços — esperado: 400
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-{
-  "placa": "   "
-}
-
-### 6 — Validação: formato de placa inválido — esperado: 400, "formato de placa inválido"
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-{
-  "placa": "INVALID"
-}
-
-### 7 — Validação: formato inválido (curto) — esperado: 400
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-{
-  "placa": "AB1234"
-}
-
-### 8 — Validação: JSON inválido (não é objeto / sintaxe) — esperado: 400, "invalid JSON body"
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-{ placa: "ABC1234" }
-
-### 9 — Validação: corpo não é JSON — esperado: 400
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-not-json-at-all
-
-### 10 — Validação: campo desconhecido (DisallowUnknownFields) — esperado: 400
-POST {{baseUrl}}/api/v1/debts
-Content-Type: application/json
-
-{
-  "placa": "ABC1234",
-  "extra": true
-}
-
-### 11 — Rota inexistente — esperado: 404 (Go ServeMux)
-GET {{baseUrl}}/api/v1/inexistente
-
-### 12 — Método não suportado em /health — esperado: 405 (net/http) ou 404
-POST {{baseUrl}}/health
-Content-Type: application/json
-
-{}
-
-# ---------------------------------------------------------------------------
-# Opcional: corpo > 1 MiB — esperado: 413. Exemplo de payload em Go:
-#   internal/adapters/httpapi/handler_test.go (TestHandler_ConsultDebts_BodyTooLarge)
-# ---------------------------------------------------------------------------
