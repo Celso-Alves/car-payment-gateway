@@ -1,0 +1,62 @@
+---
+description: Go backend (Clean Architecture) + AI workflow rules
+alwaysApply: true
+---
+
+# car-payment-gateway — Rules (Go + Clean Architecture)
+
+These rules keep changes small, testable, and aligned with the project's dependency boundaries.
+
+## Architecture boundaries (must keep)
+
+- **Domain is pure**: code under `internal/domain/**` must not import HTTP/adapters/providers.
+- **Application orchestrates**: code under `internal/application/**` may depend on domain types/services and **ports** (interfaces), never concrete adapters.
+- **Adapters translate**: code under `internal/adapters/**` handles I/O, parsing, status codes, provider wire formats; it must not embed business rules.
+- **Composition only in `cmd/api`**: wiring, env parsing, timeouts, graceful shutdown, route registration.
+
+## Live coding / AI workflow (how to work professionally)
+
+When asked to implement a change:
+
+- **Say the plan first**: what files you’ll touch and why (1 sentence).
+- **Change in small commits**: one behavior change at a time (no drive-by refactors).
+- **Tests first when possible**:
+  - Domain rule → unit test in `internal/domain/**`.
+  - Fallback/orchestration → unit test in `internal/application/usecase/**`.
+  - HTTP contract → handler test in `internal/adapters/httpapi/**`.
+- **Run the suite**: `make test` (use `make test-race` if concurrency is involved).
+- **Keep logs safe**: never log full plates; always use `pkg/logger.MaskPlate`.
+
+## Error handling & contracts
+
+- HTTP handler must keep strict input handling:
+  - `MaxBytesReader` (1 MiB), `DisallowUnknownFields`, validate `placa`.
+  - Map known errors: unknown debt types → 400, all providers failed → 503.
+- Do not return provider-specific errors to clients; keep internal details in logs only.
+
+## Money & rounding
+
+- Monetary values must use `github.com/shopspring/decimal`.
+- Round only at boundaries (API output / totals) and keep behavior deterministic.
+- Never introduce `float64` for currency.
+
+## Provider behavior (resilience)
+
+- Per-provider timeouts must remain (see `providerTimeout` in `ConsultDebts`).
+- Preserve “first success wins” fallback semantics.
+- If adding a new provider, implement the `provider.Provider` port and register it in `cmd/api/main.go`.
+
+## Examples (what “good” looks like)
+
+### Add a new debt type
+
+- Add constant in `internal/domain/entity`.
+- Add an `InterestStrategy` in `internal/domain/service/interest.go`.
+- Add a unit test in `internal/domain/service/interest_test.go`.
+
+### Add HTTP middleware
+
+- Implement in `internal/adapters/httpapi/middleware.go`.
+- Wire in `cmd/api/main.go`.
+- Add/adjust handler tests for status codes and headers.
+

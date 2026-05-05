@@ -53,8 +53,20 @@ func (s *Simulator) Simulate(plate string, debts []entity.UpdatedDebt) entity.Co
 		options = append(options, buildOption(label, groupTotal))
 	}
 
+	debtDetails := make([]entity.DebtDetail, len(debts))
+	for i, d := range debts {
+		debtDetails[i] = entity.DebtDetail{
+			Type:           string(d.Type),
+			OriginalAmount: d.Amount.Round(2),
+			UpdatedAmount:  d.UpdatedAmount.Round(2),
+			DueDate:        d.DueDate.Format("2006-01-02"),
+			DaysOverdue:    d.DaysOverdue,
+		}
+	}
+
 	result := entity.ConsultResult{
-		Plate: plate,
+		Plate:   plate,
+		Debts:   debtDetails,
 		Summary: entity.PaymentSummary{
 			TotalOriginal: totalOriginal.Round(2),
 			TotalUpdated:  totalUpdated.Round(2),

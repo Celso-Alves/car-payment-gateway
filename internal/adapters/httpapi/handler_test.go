@@ -23,7 +23,7 @@ func newTestHandler(providers ...provider.Provider) *httpapi.Handler {
 	log := logger.NewDiscard()
 	calc := service.NewCalculator(referenceDate, log)
 	sim := service.NewSimulator()
-	uc := usecase.NewConsultDebts(providers, calc, sim, log, 3*time.Second, 30*time.Second)
+	uc := usecase.NewConsultDebts(providers, calc, sim, log, 3*time.Second, 30*time.Second, 1, 0)
 	return httpapi.NewHandler(uc, log, 30*time.Second)
 }
 

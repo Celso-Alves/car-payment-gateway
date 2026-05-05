@@ -35,6 +35,22 @@ Valores monetários serializam como **strings** decimais (tipo `decimal.Decimal`
 ```json
 {
   "placa": "ABC1234",
+  "debitos": [
+    {
+      "tipo": "IPVA",
+      "valor_original": "1500.00",
+      "valor_atualizado": "1800.00",
+      "vencimento": "2024-01-10",
+      "dias_atraso": 121
+    },
+    {
+      "tipo": "MULTA",
+      "valor_original": "300.50",
+      "valor_atualizado": "543.91",
+      "vencimento": "2024-02-19",
+      "dias_atraso": 81
+    }
+  ],
   "resumo": {
     "total_original": "1800.5",
     "total_atualizado": "2343.91"
@@ -131,7 +147,10 @@ HTTP/1.1 200 OK
 | `ADDR` | *(vazio)* | Endereço completo do servidor (ex. `:9090`); tem precedência sobre `PORT` |
 | `REFERENCE_DATE` | *(vazio)* | Data de referência dos juros (`YYYY-MM-DD`, UTC). Vazio = `time.Now().UTC()` no startup |
 | `LOG_LEVEL` | `INFO` | `DEBUG` habilita logs de debug |
-| `ENABLE_MOCK_FAILING` | `false` | `true` insere MockFailing no início da chain |
+| `ENABLE_MOCK_FAILING` | `false` | `true` insere MockFailing (falha imediata) no início da chain |
+| `ENABLE_MOCK_SLOW` | `false` | `true` insere MockFailing com simulação de timeout (ver SPEC-005) |
+| `PROVIDER_MAX_ATTEMPTS` | `1` | Tentativas por provedor antes do fallback (mínimo 1) |
+| `PROVIDER_RETRY_BACKOFF_MS` | `0` | Backoff fixo em ms entre tentativas no mesmo provedor |
 
 ## curl de exemplo
 

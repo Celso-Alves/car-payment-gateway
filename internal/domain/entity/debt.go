@@ -17,6 +17,7 @@ type DebtType string
 const (
 	DebtTypeIPVA  DebtType = "IPVA"
 	DebtTypeMULTA DebtType = "MULTA"
+	// DPVAT, licenciamento, taxa de transferencia....
 )
 
 // Debt is the canonical representation of a single vehicle debt,
@@ -68,9 +69,19 @@ type PaymentOption struct {
 	Card       CardOption      `json:"cartao_credito"`
 }
 
+// DebtDetail represents a single debt in the API response with original and updated values.
+type DebtDetail struct {
+	Type           string          `json:"tipo"`
+	OriginalAmount decimal.Decimal `json:"valor_original"`
+	UpdatedAmount  decimal.Decimal `json:"valor_atualizado"`
+	DueDate        string          `json:"vencimento"` // YYYY-MM-DD format
+	DaysOverdue    int             `json:"dias_atraso"`
+}
+
 // ConsultResult is the full API response payload (SPEC-006).
 type ConsultResult struct {
 	Plate   string         `json:"placa"`
+	Debts   []DebtDetail   `json:"debitos"`
 	Summary PaymentSummary `json:"resumo"`
 	Payment struct {
 		Options []PaymentOption `json:"opcoes"`

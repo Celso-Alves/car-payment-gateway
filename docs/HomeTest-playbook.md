@@ -14,8 +14,7 @@ Roteiro para apresentar, em ordem, os **requisitos obrigatórios**, o que seria 
 |-------------|----------------------|
 | Serviço consulta **múltiplos provedores** (formatos diferentes), **normaliza** para um modelo único, aplica **juros**, simula **PIX e cartão**, oferece **total e parcial por tipo**, com **fallback/retry** e **camadas separadas**. | `README.md`, diagrama de arquitetura |
 | O PDF usa exemplo fixo `2024-05-10`; no serviço isso é `REFERENCE_DATE` para reproduzir números. | `cmd/api/main.go` |
-
-**Nota honesta para o avaliador:** a API atual (SPEC-006) devolve `placa`, `resumo` e `pagamentos.opcoes` — não inclui a lista `debitos[]` do PDF; o detalhe por débito existe no domínio (`UpdatedDebt`) durante o fluxo. Os totais e opções TOTAL / SOMENTE_* cobrem o núcleo do enunciado.
+| Resposta segue estrutura exata do PDF: `placa`, `debitos[]` (detalhes por débito), `resumo`, `pagamentos.opcoes`. | [SPEC-006](SPEC-006-http-api.md), `docs/Untitled-1.json` |
 
 ---
 

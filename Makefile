@@ -1,4 +1,4 @@
-.PHONY: run build test test-verbose lint docker-build docker-run clean
+.PHONY: run build test test-verbose lint docker-build docker-run clean demo-fallback demo-timeout
 
 BINARY   := car-payment-gateway
 IMAGE    := car-payment-gateway:latest
@@ -50,6 +50,10 @@ docker-run: docker-build
 ## Demo fallback: start with MockFailing provider first in chain
 demo-fallback:
 	ENABLE_MOCK_FAILING=true go run ./cmd/api/...
+
+## Demo timeout: first provider blocks until per-attempt deadline (then fallback)
+demo-timeout:
+	ENABLE_MOCK_SLOW=true go run ./cmd/api/...
 
 ## Clean build artefacts
 clean:
