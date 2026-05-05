@@ -47,13 +47,13 @@ docker-build:
 docker-run: docker-build
 	docker run --rm -p $(PORT):$(PORT) -e PORT=$(PORT) -e ADDR=$(ADDR) -e REFERENCE_DATE=$(REFERENCE_DATE) $(IMAGE)
 
-## Demo fallback: start with MockFailing provider first in chain
+## Demo fallback: start with MockFailing provider first in chain (port 3002)
 demo-fallback:
-	ENABLE_MOCK_FAILING=true go run ./cmd/api/...
+	PORT=3002 ENABLE_MOCK_FAILING=true go run ./cmd/api/...
 
-## Demo timeout: first provider blocks until per-attempt deadline (then fallback)
+## Demo timeout: first provider blocks until per-attempt deadline (then fallback, port 3003)
 demo-timeout:
-	ENABLE_MOCK_SLOW=true go run ./cmd/api/...
+	PORT=3003 ENABLE_MOCK_SLOW=true go run ./cmd/api/...
 
 ## Clean build artefacts
 clean:

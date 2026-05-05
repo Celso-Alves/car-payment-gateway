@@ -37,20 +37,24 @@ make build        # gera em bin/
 make docker-run   # build da imagem e execução em :3000
 ```
 
-### Demo: fallback em ação
+### Demo: fallback em ação (porta 3002)
 
 ```bash
 make demo-fallback
-# Sobe com o provider MockFailing primeiro na cadeia.
-# Os logs mostram WARN para o MockFailing e INFO quando o ProviderA obtiver sucesso.
+# Sobe em :3002 com MockFailing primeiro na cadeia.
+# Logs: WARN em MockFailing, INFO em ProviderA sucesso.
+curl -X POST http://localhost:3002/api/v1/debts \
+  -H "Content-Type: application/json" -d '{"placa":"ABC1234"}'
 ```
 
-### Demo: timeout por tentativa
+### Demo: timeout por tentativa (porta 3003)
 
 ```bash
 make demo-timeout
-# Primeiro provedor segura até o timeout da tentativa (3s por padrão); depois o fallback segue para A/B.
-# Os logs devem mostrar deadline exceeded no mock e sucesso no próximo provedor.
+# Sobe em :3003; MockFailing slow segura até timeout (3s), depois fallback A/B.
+# Logs: "deadline exceeded" em MockFailing, sucesso em próximo provedor.
+curl -X POST http://localhost:3003/api/v1/debts \
+  -H "Content-Type: application/json" -d '{"placa":"ABC1234"}'
 ```
 
 ### Demo: retry com backoff
@@ -58,17 +62,14 @@ make demo-timeout
 Cada provedor pode ser retentado antes do fallback para o próximo:
 
 ```bash
-# Retry sem backoff (tentativas imediatas)
+# Retry 3x sem backoff (tenta 3x MockFailing, depois A/B) — porta 3002
 PROVIDER_MAX_ATTEMPTS=3 make demo-fallback
-# Logs mostram "attempt 1/3 failed, retrying", "attempt 2/3 failed, retrying", "attempt 3/3 failed, trying next"
 
-# Retry com backoff de 500ms entre tentativas
+# Retry 3x com backoff 500ms entre tentativas — porta 3002
 PROVIDER_MAX_ATTEMPTS=3 PROVIDER_RETRY_BACKOFF_MS=500 make demo-fallback
-# Cada falha aguarda 500ms antes da próxima tentativa no mesmo provedor
 
-# Combinar timeout + retry
-PROVIDER_MAX_ATTEMPTS=2 PROVIDER_RETRY_BACKOFF_MS=100 make demo-timeout
-# MockFailing tenta 2x (com 100ms de pausa), depois ProviderA tenta 2x
+# Combinar timeout + retry (3x cada provedor, 100ms backoff) — porta 3003
+PROVIDER_MAX_ATTEMPTS=3 PROVIDER_RETRY_BACKOFF_MS=100 make demo-timeout
 ```
 
 **Variáveis:**
