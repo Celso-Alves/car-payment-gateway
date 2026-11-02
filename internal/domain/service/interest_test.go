@@ -35,7 +35,7 @@ func TestCalculator_Apply(t *testing.T) {
 			wantDaysOverdue: 121,
 		},
 		{
-			name: "MULTA: 85 days overdue, no cap (HomeTest.pdf spec)",
+			name: "MULTA: 85 days overdue, no cap (reference scenario)",
 			debt: entity.Debt{
 				Type:    entity.DebtTypeMULTA,
 				Amount:  decimal.RequireFromString("300.50"),

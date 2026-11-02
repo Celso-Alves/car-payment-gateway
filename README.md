@@ -76,7 +76,6 @@ PROVIDER_MAX_ATTEMPTS=3 PROVIDER_RETRY_BACKOFF_MS=100 make demo-timeout
 - `PROVIDER_MAX_ATTEMPTS` (default 1): tentativas por provedor antes de fallback
 - `PROVIDER_RETRY_BACKOFF_MS` (default 0): pausa em ms entre tentativas (0 = desligado)
 
-Roteiro passo a passo para apresentação alinhada ao enunciado (HomeTest): [docs/HomeTest-playbook.md](docs/HomeTest-playbook.md).
 
 ## API
 
@@ -91,7 +90,7 @@ Consulta débitos e simula opções de pagamento para uma placa de veículo.
 
 **Resposta (200):** valores monetários são **strings** decimais (`shopspring/decimal`).
 
-Com `REFERENCE_DATE=2024-05-10` (alinhado com HomeTest.pdf):
+Com `REFERENCE_DATE=2024-05-10` (alinhado com o cenário de referência):
 
 ```json
 {

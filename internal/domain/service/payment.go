@@ -87,7 +87,7 @@ func buildOption(label string, base decimal.Decimal) entity.PaymentOption {
 	}
 }
 
-// buildPix applies the 5% PIX discount (SPEC-004, HomeTest.pdf).
+// buildPix applies the 5% PIX discount (SPEC-004).
 func buildPix(base decimal.Decimal) entity.PixOption {
 	one := decimal.NewFromInt(1)
 	factor := one.Sub(pixDiscountRate)
