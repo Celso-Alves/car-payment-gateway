@@ -12,7 +12,7 @@ Serviço de consulta de débitos veiculares e simulação de pagamento, criado c
 
 ```bash
 # Clonar e entrar no repositório
-git clone https://github.com/celsoadsjr/car-payment-gateway
+git clone https://github.com/Celso-Alves/car-payment-gateway
 cd car-payment-gateway
 
 # Subir
@@ -76,7 +76,6 @@ PROVIDER_MAX_ATTEMPTS=3 PROVIDER_RETRY_BACKOFF_MS=100 make demo-timeout
 - `PROVIDER_MAX_ATTEMPTS` (default 1): tentativas por provedor antes de fallback
 - `PROVIDER_RETRY_BACKOFF_MS` (default 0): pausa em ms entre tentativas (0 = desligado)
 
-Roteiro passo a passo para apresentação alinhada ao enunciado (HomeTest): [docs/HomeTest-playbook.md](docs/HomeTest-playbook.md).
 
 ## API
 
@@ -91,7 +90,7 @@ Consulta débitos e simula opções de pagamento para uma placa de veículo.
 
 **Resposta (200):** valores monetários são **strings** decimais (`shopspring/decimal`).
 
-Com `REFERENCE_DATE=2024-05-10` (alinhado com HomeTest.pdf):
+Com `REFERENCE_DATE=2024-05-10` (alinhado com o cenário de referência):
 
 ```json
 {
@@ -415,3 +414,7 @@ Tipos reais de débito em SP: **IPVA** (tributo anual), **MULTA** (infração),
 
 Pagamento PIX de débitos veiculares já está em produção em SP — a SEFAZ-SP emite QR
 codes com validade de 15 minutos pela API dedicada `pix-detran`.
+
+## Licença
+
+MIT. Veja [LICENSE](LICENSE).

@@ -1,4 +1,4 @@
-module github.com/celsoadsjr/car-payment-gateway
+module github.com/Celso-Alves/car-payment-gateway
 
 go 1.24.5
 

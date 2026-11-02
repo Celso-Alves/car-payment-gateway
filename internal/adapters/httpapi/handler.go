@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/celsoadsjr/car-payment-gateway/internal/application/usecase"
-	"github.com/celsoadsjr/car-payment-gateway/pkg/logger"
+	"github.com/Celso-Alves/car-payment-gateway/internal/application/usecase"
+	"github.com/Celso-Alves/car-payment-gateway/pkg/logger"
 )
 
 const maxRequestBodyBytes int64 = 1 << 20 // 1 MiB

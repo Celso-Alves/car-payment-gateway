@@ -146,7 +146,7 @@ Content-Type: application/json
   "placa": "JKL1M23"
 }
 
-### 16 — Reproduzir números HomeTest — subir servidor com REFERENCE_DATE=2024-05-10
+### 16 — Reproduzir números de referência — subir servidor com REFERENCE_DATE=2024-05-10
 POST {{baseUrl}}/api/v1/debts
 Content-Type: application/json
 
@@ -277,7 +277,7 @@ Substitua o conteúdo do ficheiro Postman por:
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\n  \"placa\": \"ABC1234\"\n}" },
             "url": "{{baseUrl}}/api/v1/debts",
-            "description": "Subir API com REFERENCE_DATE=2024-05-10 para alinhar totais ao HomeTest."
+            "description": "Subir API com REFERENCE_DATE=2024-05-10 para alinhar totais ao cenário de referência."
           }
         },
         {
