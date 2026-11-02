@@ -12,7 +12,7 @@ Serviço de consulta de débitos veiculares e simulação de pagamento, criado c
 
 ```bash
 # Clonar e entrar no repositório
-git clone https://github.com/celsoadsjr/car-payment-gateway
+git clone https://github.com/Celso-Alves/car-payment-gateway
 cd car-payment-gateway
 
 # Subir
@@ -415,3 +415,7 @@ Tipos reais de débito em SP: **IPVA** (tributo anual), **MULTA** (infração),
 
 Pagamento PIX de débitos veiculares já está em produção em SP — a SEFAZ-SP emite QR
 codes com validade de 15 minutos pela API dedicada `pix-detran`.
+
+## Licença
+
+MIT. Veja [LICENSE](LICENSE).

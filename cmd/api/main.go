@@ -16,11 +16,11 @@ import (
 	"syscall"
 	"time"
 
-	httpapi "github.com/celsoadsjr/car-payment-gateway/internal/adapters/httpapi"
-	"github.com/celsoadsjr/car-payment-gateway/internal/adapters/provider"
-	"github.com/celsoadsjr/car-payment-gateway/internal/application/usecase"
-	"github.com/celsoadsjr/car-payment-gateway/internal/domain/service"
-	"github.com/celsoadsjr/car-payment-gateway/pkg/logger"
+	httpapi "github.com/Celso-Alves/car-payment-gateway/internal/adapters/httpapi"
+	"github.com/Celso-Alves/car-payment-gateway/internal/adapters/provider"
+	"github.com/Celso-Alves/car-payment-gateway/internal/application/usecase"
+	"github.com/Celso-Alves/car-payment-gateway/internal/domain/service"
+	"github.com/Celso-Alves/car-payment-gateway/pkg/logger"
 )
 
 func main() {

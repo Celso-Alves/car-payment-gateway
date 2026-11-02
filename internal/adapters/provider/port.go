@@ -7,7 +7,7 @@ package provider
 import (
 	"context"
 
-	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
+	"github.com/Celso-Alves/car-payment-gateway/internal/domain/entity"
 )
 
 // Provider is the port (SPEC-001) that every external debt source must

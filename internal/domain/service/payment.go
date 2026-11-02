@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
+	"github.com/Celso-Alves/car-payment-gateway/internal/domain/entity"
 	"github.com/shopspring/decimal"
 )
 

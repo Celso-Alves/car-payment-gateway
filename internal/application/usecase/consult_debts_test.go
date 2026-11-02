@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/celsoadsjr/car-payment-gateway/internal/adapters/provider"
-	"github.com/celsoadsjr/car-payment-gateway/internal/application/usecase"
-	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
-	"github.com/celsoadsjr/car-payment-gateway/internal/domain/service"
-	"github.com/celsoadsjr/car-payment-gateway/pkg/logger"
+	"github.com/Celso-Alves/car-payment-gateway/internal/adapters/provider"
+	"github.com/Celso-Alves/car-payment-gateway/internal/application/usecase"
+	"github.com/Celso-Alves/car-payment-gateway/internal/domain/entity"
+	"github.com/Celso-Alves/car-payment-gateway/internal/domain/service"
+	"github.com/Celso-Alves/car-payment-gateway/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 

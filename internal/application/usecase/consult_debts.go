@@ -9,10 +9,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/celsoadsjr/car-payment-gateway/internal/adapters/provider"
-	"github.com/celsoadsjr/car-payment-gateway/internal/domain/entity"
-	"github.com/celsoadsjr/car-payment-gateway/internal/domain/service"
-	"github.com/celsoadsjr/car-payment-gateway/pkg/logger"
+	"github.com/Celso-Alves/car-payment-gateway/internal/adapters/provider"
+	"github.com/Celso-Alves/car-payment-gateway/internal/domain/entity"
+	"github.com/Celso-Alves/car-payment-gateway/internal/domain/service"
+	"github.com/Celso-Alves/car-payment-gateway/pkg/logger"
 )
 
 // ErrAllProvidersFailed is returned when every provider in the list
